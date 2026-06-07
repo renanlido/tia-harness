@@ -1,0 +1,508 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/renanlido/TIAOpenness/.claude-plugin/schemas/project-spec.schema.json",
+  "title": "TIA Project Spec",
+  "description": "Structured engineering input the TIA harness turns into a compliant-by-construction, verifiable TIA Portal V21 project. Formalizes docs/TIA-BEST-PRACTICES.md §13.2. The user supplies engineering intent; the harness resolves real order numbers via GET /catalog and executes the creation pipeline. Connection params, IPs and order numbers shown in examples are illustrative — concrete order numbers MUST be resolved against the live installed catalog. This schema enforces SHAPE only; deterministic cross-field rules (same-subnet, unique names, module limits, language-by-family, the G5 safety rule) are enforced by the spec.validate skill on top of this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "devices"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project-level identity and applicable standards. One project per machine/line whose devices must be coordinated (shared subnet, IO-systems, S7 connections, HMI<->PLC links). See §1.",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Machine/line name. Used as the TIA project name. Prefer a meaningful, location/function-encoding name (e.g. 'Line2'), never 'Project_1'."
+        },
+        "directory": {
+          "type": "string",
+          "description": "Absolute path of the target directory for project creation. Guard Gd4: the directory must be EMPTY before project/create (the harness pre-checks). Windows path; escape backslashes in JSON."
+        },
+        "standards": {
+          "type": "array",
+          "description": "Applicable engineering standards driving structure and FDS. e.g. IEC 61131-3 (always), ISA-88/95/106 (batch/MES), IEC 61508/61511 (when safety is required).",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project-wide engineering conventions enforced uniformly. Defaults encode the §0 professional baseline (optimized access, 100% symbolic, right language per task). PLCopen is explicit that ANY documented naming scheme is acceptable — consistency matters more than the specific scheme.",
+      "properties": {
+        "namingScheme": {
+          "type": "string",
+          "default": "plcopen",
+          "description": "Naming/prefix scheme applied uniformly and linted against. Configurable but enforced (the defensible product default). 'plcopen' = the PLCopen-style prefix scheme in §8."
+        },
+        "optimizedAccess": {
+          "type": "boolean",
+          "default": true,
+          "description": "Baseline §0: optimized block access is the default for every block (faster, symbolic-only, supports ARRAY[*] and IDB resize without download). Set false only for legacy absolute-addressing/pointer/AT interop, knowing it carries overhead."
+        },
+        "symbolicOnly": {
+          "type": "boolean",
+          "default": true,
+          "description": "Baseline §0: 100% symbolic addressing in logic — never hardcode M/I/Q or %DBx.DBXy.z. The single most-cited maintainability rule."
+        },
+        "defaultLanguages": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Default block language per concern (§4 language choice). LAD/FBD for binary interlocks, SCL for algorithms, GRAPH for sequencers. GRAPH/STL are S7-1500-only (validated by spec.validate against the target family).",
+          "properties": {
+            "interlocks": { "$ref": "#/$defs/language", "default": "LAD" },
+            "algorithms": { "$ref": "#/$defs/language", "default": "SCL" },
+            "sequencers": { "$ref": "#/$defs/language", "default": "GRAPH" }
+          }
+        }
+      }
+    },
+    "devices": {
+      "type": "array",
+      "description": "The stations to create (CPUs and distributed IO). Each is created via Devices.CreateWithItem(typeIdentifier, ...). Resolve every typeIdentifier against GET /catalog before building — never guess. At least one device is required.",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/device" }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PROFINET/IP topology. One PROFINET subnet (typically /24). HARD RULE (spec.validate): the PLC interface and ALL its IO-devices must share the SAME subnet. Device names are the PROFINET identity and must be unique and equal the HW-config name. See §3.",
+      "required": ["subnet", "nodes"],
+      "properties": {
+        "subnet": { "$ref": "#/$defs/subnet" },
+        "nodes": {
+          "type": "array",
+          "description": "IP/IO assignment per device. Exactly one CPU node should set createIoSystem:true to host the IO-system its IO-devices join.",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/networkNode" }
+        }
+      }
+    },
+    "subnets": {
+      "type": "array",
+      "description": "Optional explicit list of subnets when more than one is modeled. The primary subnet is usually given inline under network.subnet; list additional subnets here. Each subnet name must be unique.",
+      "items": { "$ref": "#/$defs/subnet" }
+    },
+    "dataTypes": {
+      "type": "array",
+      "description": "PLC data types (UDTs). Baseline §0/§5: type EVERY block interface and every structured datum with a UDT. Import UDTs BEFORE the blocks that use them (Gd6). Keep nesting <= ~3 levels.",
+      "items": { "$ref": "#/$defs/udt" }
+    },
+    "tags": {
+      "type": "array",
+      "description": "PLC tags, split across purpose-specific tag tables (I/O, internal, HMI, constants — §6). Carry engineering units in comments. Never hardcode the resulting absolute addresses in logic (symbolicOnly).",
+      "items": { "$ref": "#/$defs/tag" }
+    },
+    "tagTables": {
+      "type": "array",
+      "description": "Optional explicit declaration of tag tables (names + purpose). If omitted, tables are inferred from the distinct 'table' values used by 'tags'. Purpose-specific split is the §6 rule.",
+      "items": { "$ref": "#/$defs/tagTable" }
+    },
+    "functionalUnits": {
+      "type": "array",
+      "description": "ISA-88 functional hierarchy mirrored in the program structure: unit -> equipment module -> control module. Each control module (a motor/valve/drive) becomes one reusable library FB TYPE with its own UDT interface (§1/§4).",
+      "items": { "$ref": "#/$defs/functionalUnit" }
+    },
+    "reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reuse strategy (§7). Prefer versioned library TYPES over master copies and over copy-paste. NOTE (low confidence): V21 Openness versioned-type update-to-latest may be manual; master copies are well supported.",
+      "properties": {
+        "library": {
+          "type": "string",
+          "description": "Name of the central/global library that holds the company-standard types (e.g. 'CompanyStd')."
+        },
+        "types": {
+          "type": "array",
+          "description": "Library types to use, in 'Name@major.minor' form (e.g. 'FB_Motor@1.2'). Bump major on a breaking interface change, minor otherwise.",
+          "items": { "$ref": "#/$defs/libraryTypeRef" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "hmi": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Classic WinCC HMI (Comfort/Advanced/Professional). Build HMI tags by dragging PLC tags to keep the symbolic PLC-tag -> HMI-tag link; configure alarms on the tag via alarm classes; use faceplates as the HMI analogue of library types (§10). V21 supports classic-HMI screen round-trip only — NOT WinCC Unified.",
+      "properties": {
+        "screens": {
+          "type": "array",
+          "description": "Screen names to author/import (e.g. 'Overview', 'Conv01').",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "faceplates": {
+          "type": "array",
+          "description": "Reusable faceplate names (e.g. 'FP_Motor'). Central definition; instances inherit changes.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "alarmClasses": {
+          "type": "array",
+          "description": "Alarm classes defining display + acknowledgement policy.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "description": "Alarm class name (e.g. 'Warning')." },
+              "ack": { "type": "boolean", "description": "Whether alarms of this class require acknowledgement." }
+            }
+          }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Functional safety (F). SAFETY LOGIC IS SPECIFIED, NEVER AUTO-AUTHORED. Per IEC 61511 Management of Change, any F change is re-verified/validated/documented and signed off by a NAMED functional-safety engineer. RULE G5 (spec.validate): safety.required && autonomous => REJECT. The harness treats F as read-only/verification-oriented (§9).",
+      "required": ["required"],
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the project includes a safety (F) program. If true, F-logic is human-authored and gated (G5); selecting an F-CPU is allowed but authoring/downloading F is never autonomous."
+        },
+        "sil": {
+          "type": "string",
+          "description": "Target safety integrity level / performance level (e.g. 'SIL3', 'PLe'). Informational; drives F-CPU selection, not auto-authoring."
+        },
+        "fRuntimeGroups": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Number of F-runtime groups (a fail-safe OB calling a Main safety block). Max 2 (§9)."
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "description": "Project (UI/comment) languages to enable in TIA, as culture codes (e.g. 'en-US', 'pt-BR', 'de-DE'). Distinct from block programming languages (those live under conventions.defaultLanguages and blocks[].language).",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+        "description": "BCP-47-style culture code."
+      },
+      "uniqueItems": true
+    },
+    "blocks": {
+      "type": "array",
+      "description": "Optional explicit program-block declarations (OB/FB/FC/global DB) when they are not derived from functionalUnits. Each declares its programming language, routed by the harness to SCL (textual) or SimaticML XML (graphical) per Gd6.",
+      "items": { "$ref": "#/$defs/block" }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Verification ladder configuration (§12). Rungs 0-3 are unattended (validate -> compile -> consistency -> simulate); rungs 4-6 (download/online/FAT-SAT) are gated. Clean compile is the precondition for export and download.",
+      "properties": {
+        "ladder": {
+          "type": "array",
+          "description": "Which unattended rungs to run, in order. 'compile' and 'consistency' need only Openness; 'simulate' additionally needs PLCSIM.",
+          "items": {
+            "type": "string",
+            "enum": ["validate", "compile", "consistency", "simulate"]
+          },
+          "uniqueItems": true
+        },
+        "tests": {
+          "type": "array",
+          "description": "Machine-readable stimulus->expected test table for simulation (rung 3). Never assert on wall-clock scan timing (sim timing != hardware).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["stimulus", "expect"],
+            "properties": {
+              "stimulus": {
+                "type": "object",
+                "description": "Tag -> value map written before evaluation.",
+                "additionalProperties": true
+              },
+              "expect": {
+                "type": "object",
+                "description": "Tag -> expected value map asserted after evaluation.",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Gated download configuration (§14 gates G2/G3). Download forces a CPU STOP and is physically consequential — it always requires explicit human approval bound to a plan hash. The harness never auto-downloads.",
+      "properties": {
+        "approvalRequired": {
+          "type": "boolean",
+          "default": true,
+          "description": "Must be true in any responsible config: download/online cross a hard human gate. The harness prepares the Load-Preview; a named operator confirms."
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Target connection params. These strings vary per machine; a discovery step (online.accessibledevices) is usually needed first.",
+          "properties": {
+            "connectionMode": { "type": "string", "description": "e.g. 'PN/IE'." },
+            "pcInterfaceName": { "type": "string", "description": "PG/PC NIC name on the serve host (e.g. '<NIC>')." },
+            "targetInterfaceName": { "type": "string", "description": "Target CPU interface (e.g. '1 X1')." }
+          }
+        }
+      }
+    },
+    "autonomous": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the caller intends fully autonomous execution through the gated rungs (download/online/safety). The harness is an assistant up to the gate, NEVER an autonomous commissioner. RULE G5 (spec.validate): if safety.required is true AND autonomous is true, the spec is REJECTED — F-logic can never be authored/downloaded autonomously (IEC 61511)."
+    }
+  },
+  "$defs": {
+    "language": {
+      "type": "string",
+      "enum": ["LAD", "FBD", "SCL", "STL", "GRAPH"],
+      "description": "PLC programming language. LAD/FBD/SCL are valid on both S7-1200 and S7-1500; STL and GRAPH are S7-1500-ONLY (spec.validate rejects them on an S7-1200 target)."
+    },
+    "typeIdentifier": {
+      "type": "string",
+      "pattern": "^OrderNumber:.+/V[0-9]+\\.[0-9]+$",
+      "description": "TIA device/module type identifier. EXACT shape: 'OrderNumber:<MLFB>/V<major>.<minor>' — a forward SLASH before V (a colon ':V2.9' is a known V21 drift bug and is rejected). MLFB and firmware are independent axes; resolve a concrete pair via GET /catalog (which returns typeIdentifierNormalized — pass that straight through). Example: 'OrderNumber:6ES7 511-1AK02-0AB0/V2.9'.",
+      "examples": [
+        "OrderNumber:6ES7 511-1AK02-0AB0/V2.9",
+        "OrderNumber:6ES7214-1AG40-0XB0/V4.5",
+        "OrderNumber:6ES7131-6BF01-0BA0/V0.0"
+      ]
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A station (CPU or distributed IO device) and its plugged modules.",
+      "required": ["name", "typeIdentifier"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Meaningful, UNIQUE device name encoding location/function (e.g. 'Line2_CPU', 'Line2_ET200SP_01'). This is also the PROFINET identity and must match the HW-config name. Uniqueness is enforced by spec.validate."
+        },
+        "typeIdentifier": { "$ref": "#/$defs/typeIdentifier" },
+        "role": {
+          "type": "string",
+          "enum": ["cpu", "io-device", "hmi", "drive"],
+          "description": "Logical role. Drives validation: a 'cpu' may host an IO-system and is subject to module-count limits and PTO/relay capability gates; an 'io-device' must share the CPU's subnet."
+        },
+        "family": {
+          "type": "string",
+          "enum": ["S7-1200", "S7-1500", "ET200SP", "ET200MP", "ET200PRO", "other"],
+          "description": "CPU/IO family hint used by spec.validate for module-limit and language-by-family checks (e.g. no STL/GRAPH on S7-1200; S7-1200 SM limits 0/2/8). If omitted, the validator may infer it from the MLFB."
+        },
+        "outputType": {
+          "type": "string",
+          "enum": ["DC", "relay"],
+          "description": "S7-1200 output stage. Capability gate: high-speed on-board PTO/PWM is valid ONLY on DC/DC/DC (and 1217C differential). A 'relay' device requesting PTO is rejected early (§2)."
+        },
+        "modules": {
+          "type": "array",
+          "description": "Modules plugged into this device (DI/DO/AI/AO/CM/CP/SB...). Subject to per-CPU expansion limits (S7-1200: 0/2/8 SM, 1 SB, 3 CM; S7-1500: up to 32). Count enforced by spec.validate.",
+          "items": { "$ref": "#/$defs/module" }
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A plugged module. order/typeIdentifier follows the same OrderNumber:<MLFB>/V<fw> contract as a device.",
+      "required": ["order"],
+      "properties": {
+        "order": {
+          "$ref": "#/$defs/typeIdentifier",
+          "description": "Module type identifier (OrderNumber:<MLFB>/V<fw>)."
+        },
+        "slot": {
+          "type": "integer",
+          "description": "Target slot. 65535 is the common 'next free' sentinel used in the §13.2 example."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["SM", "SB", "CM", "CP", "BB"],
+          "description": "Module class, used to apply the right per-CPU expansion limit (SM vs SB vs CM/CP)."
+        }
+      }
+    },
+    "subnet": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A PROFINET/Ethernet subnet.",
+      "required": ["name", "cidr"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "System:Subnet.Ethernet",
+          "description": "Openness subnet type identifier. Ethernet/PROFINET = 'System:Subnet.Ethernet'."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique subnet name (e.g. 'PN_Line2')."
+        },
+        "cidr": {
+          "type": "string",
+          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
+          "description": "IP network in CIDR notation (typically a /24, e.g. '192.168.0.0/24'). Avoid overlap with corporate IT. spec.validate checks node IPs fall inside this network."
+        }
+      }
+    },
+    "networkNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One device's network attachment: its IP and whether it creates the IO-system. CPU + its IO-devices must resolve to the SAME subnet (same-subnet rule).",
+      "required": ["device", "ip"],
+      "properties": {
+        "device": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of a device declared under 'devices'. spec.validate checks this reference resolves."
+        },
+        "ip": {
+          "type": "string",
+          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}$",
+          "description": "Static IPv4 address. Must lie within the subnet's CIDR (same-subnet rule). The controller assigns IPs at startup from resolved device names."
+        },
+        "subnet": {
+          "type": "string",
+          "description": "Optional explicit subnet name this node attaches to (defaults to network.subnet.name). Used when more than one subnet exists; the same-subnet rule is evaluated per resolved subnet."
+        },
+        "createIoSystem": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this node (a CPU interface) creates the PROFINET IO-system its IO-devices join. Create one IO-system per controller interface (§3)."
+        }
+      }
+    },
+    "udt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A PLC data type (UDT). Type every interface/structured datum with one.",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "UDT name. UNIQUE among data types. PLCopen-style prefix 'UDT_' recommended (e.g. 'UDT_Motor')."
+        },
+        "members": {
+          "type": "array",
+          "description": "Typed members. STRUCT for heterogeneous, ARRAY for homogeneous, ARRAY OF <UDT> for N identical objects.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "dataType"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "description": "Member name." },
+              "dataType": { "type": "string", "minLength": 1, "description": "Member data type (elementary, another UDT, ARRAY[..] OF ..., etc.). VARIANT/DTL/LTIME/WSTRING are version-gated — confirm against target firmware." },
+              "comment": { "type": "string", "description": "Member comment; carry engineering units where applicable." }
+            }
+          }
+        }
+      }
+    },
+    "tagTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A PLC tag table, split by purpose (§6).",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Tag-table name. Unique." },
+        "purpose": {
+          "type": "string",
+          "enum": ["IO", "internal", "HMI", "constants"],
+          "description": "Purpose category driving the §6 split."
+        }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A single PLC tag.",
+      "required": ["table", "name", "dataType"],
+      "properties": {
+        "table": { "type": "string", "minLength": 1, "description": "Name of the tag table this tag belongs to (e.g. 'IO')." },
+        "name": { "type": "string", "minLength": 1, "description": "Tag name. Unique within its table; PLCopen-style prefixing recommended." },
+        "dataType": { "type": "string", "minLength": 1, "description": "Tag data type (e.g. 'Bool', 'Int', 'Real')." },
+        "address": {
+          "type": "string",
+          "description": "Absolute PLC address (e.g. '%Q0.0', '%I1.0', '%MW10'). Declared here for the tag table only — logic must reference the tag SYMBOLICALLY, never this literal (symbolicOnly)."
+        },
+        "unit": { "type": "string", "description": "Engineering unit for the address comment (e.g. '%', 'degC'). Empty for digital signals." },
+        "retentive": { "type": "boolean", "default": false, "description": "Mark only truly persistent data as retentive — retentive memory is limited (§6)." }
+      }
+    },
+    "functionalUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An ISA-88 unit and its equipment modules.",
+      "required": ["unit"],
+      "properties": {
+        "unit": { "type": "string", "minLength": 1, "description": "Unit name (e.g. 'Conveyor01')." },
+        "equipmentModules": {
+          "type": "array",
+          "description": "Equipment modules within the unit.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "description": "Equipment-module name (e.g. 'Drive')." },
+              "controlModules": {
+                "type": "array",
+                "description": "Control modules (a motor/valve/drive). Each becomes one reusable library FB type instance with its own UDT interface.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1, "description": "Control-module name (e.g. 'M01')." },
+                    "libraryType": {
+                      "$ref": "#/$defs/libraryTypeRef",
+                      "description": "Library type backing this control module, 'Name@major.minor' (e.g. 'FB_Motor@1.2')."
+                    },
+                    "instanceDb": { "type": "string", "minLength": 1, "description": "Instance DB name for this control module (e.g. 'DB_M01'). Prefer instance/multi-instance DBs (§4)." }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "libraryTypeRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*@[0-9]+\\.[0-9]+$",
+      "description": "Versioned library TYPE reference in 'Name@major.minor' form (e.g. 'FB_Motor@1.2'). Major bumps on breaking interface change, minor otherwise (§7).",
+      "examples": ["FB_Motor@1.2", "FB_Valve@2.0"]
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A program block declaration.",
+      "required": ["name", "kind", "language"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Block name, PLCopen-style prefixed (e.g. 'FB_Motor', 'FC_Scale')." },
+        "kind": {
+          "type": "string",
+          "enum": ["OB", "FB", "FC", "DB"],
+          "description": "Block class. FB = unit of reuse/versioning (stateful, has IDB); FC = stateless utility (data via params); DB = data (minimize global DBs)."
+        },
+        "language": {
+          "$ref": "#/$defs/language",
+          "description": "Programming language. Routes the harness (Gd6): textual (SCL/STL) -> /source; graphical (LAD/FBD/GRAPH) -> SimaticML XML. STL/GRAPH are S7-1500-only."
+        },
+        "optimized": {
+          "type": "boolean",
+          "default": true,
+          "description": "Optimized block access for this block (defaults to conventions.optimizedAccess)."
+        }
+      }
+    }
+  }
+}

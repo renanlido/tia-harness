@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin.json",
+  "name": "tia-harness",
+  "displayName": "TIA Portal Automation Harness",
+  "version": "0.1.0",
+  "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness for Claude Code. Turns a structured engineering project-spec into a compliant-by-construction, verifiable TIA project, driving the `tia` MCP server over the Openness HTTP API. Ships deterministic, MCP-free skills (spec.validate, cpu.select) that deliver value offline, plus subagents and domain guardrails.",
+  "author": {
+    "name": "renanlido",
+    "email": "renan.filmagem.oliveira@gmail.com"
+  },
+  "license": "SEE LICENSE (proprietary app + license-key activation; this plugin is the open client layer)",
+  "homepage": "https://github.com/renanlido/TIAOpenness",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/renanlido/TIAOpenness.git",
+    "directory": ".claude-plugin"
+  },
+  "keywords": [
+    "tia-portal",
+    "siemens",
+    "openness",
+    "plc",
+    "s7-1500",
+    "s7-1200",
+    "industrial-automation",
+    "iec-61131-3",
+    "isa-88",
+    "mcp"
+  ],
+  "skills": [
+    "skills/spec.validate",
+    "skills/cpu.select",
+    "skills/spec.plan",
+    "skills/tia.review",
+    "skills/tia.scaffold",
+    "skills/tia.verify",
+    "skills/tia.handoff"
+  ],
+  "agents": [
+    "agents/tia-engineer.md",
+    "agents/hardware-architect.md",
+    "agents/verifier.md",
+    "agents/safety-reviewer.md"
+  ],
+  "mcpServers": {
+    "tia": {
+      "command": "npx",
+      "args": ["-y", "@renanlido/tia-openness-mcp"],
+      "env": {
+        "TIA_API_BASE": "${TIA_API_BASE:-http://localhost:5000}"
+      }
+    }
+  }
+}

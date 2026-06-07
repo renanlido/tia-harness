@@ -1,0 +1,5 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+*.user
