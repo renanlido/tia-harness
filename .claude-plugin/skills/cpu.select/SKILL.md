@@ -14,9 +14,9 @@ description: >-
 
 Map an engineering **need** to a concrete SIMATIC CPU recommendation: family →
 sub-family/variant → a representative **order number (MLFB)** → the TIA
-**`TypeIdentifier`** string. Follows the decision logic of
-`docs/TIA-CPU-REFERENCE.md` §5 and the §2 hardware guidance in
-`docs/TIA-BEST-PRACTICES.md`.
+**`TypeIdentifier`** string. Follows the decision logic of the
+SIMATIC CPU reference (§5) and the §2 hardware guidance of the TIA best-practices
+baseline (both distilled into `CPU-TABLE.md`).
 
 This is **class R**: a deterministic heuristic over the **bundled reference table**
 (`CPU-TABLE.md`). It uses **NO MCP tool** and does not open TIA. The curated table is a

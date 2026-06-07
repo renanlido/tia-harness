@@ -11,7 +11,7 @@ description: >-
 
 # spec.plan — spec → ordered build plan (class R, dry, no mutation)
 
-Transform a structured **project-spec** (`docs/TIA-BEST-PRACTICES.md` §13.2) into the
+Transform a structured **project-spec** (the project-spec model, §13.2) into the
 **ordered sequence of offline operations** that `tia.scaffold` would execute — without
 touching the project. This is the bridge between `spec.validate` (is the spec legal?) and
 `tia.scaffold` (build it): it shows the *plan* so a human can review it first.

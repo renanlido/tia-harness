@@ -8,7 +8,7 @@
     "name": "renanlido",
     "email": "renan.filmagem.oliveira@gmail.com"
   },
-  "license": "SEE LICENSE (proprietary app + license-key activation; this plugin is the open client layer)",
+  "license": "MIT",
   "homepage": "https://github.com/renanlido/TIAOpenness",
   "repository": {
     "type": "git",

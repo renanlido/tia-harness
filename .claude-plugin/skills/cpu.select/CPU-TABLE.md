@@ -1,7 +1,7 @@
 # cpu.select — CPU reference (distilled)
 
-A distilled selection reference for `cpu.select`, condensed from
-`docs/TIA-CPU-REFERENCE.md`. **Convenience reference, not ground truth** — the only
+A distilled selection reference for `cpu.select`, condensed from the SIMATIC S7-1500/
+S7-1200 CPU reference. **Convenience reference, not ground truth** — the only
 authoritative list at runtime is `GET /catalog`. Figures marked ⚠ drift by catalog
 generation; confirm against the installed catalog before building. All order numbers
 below are *representative*.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/renanlido/TIAOpenness/.claude-plugin/schemas/project-spec.schema.json",
   "title": "TIA Project Spec",
-  "description": "Structured engineering input the TIA harness turns into a compliant-by-construction, verifiable TIA Portal V21 project. Formalizes docs/TIA-BEST-PRACTICES.md §13.2. The user supplies engineering intent; the harness resolves real order numbers via GET /catalog and executes the creation pipeline. Connection params, IPs and order numbers shown in examples are illustrative — concrete order numbers MUST be resolved against the live installed catalog. This schema enforces SHAPE only; deterministic cross-field rules (same-subnet, unique names, module limits, language-by-family, the G5 safety rule) are enforced by the spec.validate skill on top of this schema.",
+  "description": "Structured engineering input the TIA harness turns into a compliant-by-construction, verifiable TIA Portal V21 project. Formalizes the TIA best-practices project-spec model (§13.2). The user supplies engineering intent; the harness resolves real order numbers via GET /catalog and executes the creation pipeline. Connection params, IPs and order numbers shown in examples are illustrative — concrete order numbers MUST be resolved against the live installed catalog. This schema enforces SHAPE only; deterministic cross-field rules (same-subnet, unique names, module limits, language-by-family, the G5 safety rule) are enforced by the spec.validate skill on top of this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": ["project", "devices"],

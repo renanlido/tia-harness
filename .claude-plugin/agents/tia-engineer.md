@@ -15,8 +15,7 @@ tools: Read, Grep, Glob
 
 ## Role
 
-Author the **offline** PLC program per the professional baseline (§0/§4/§5/§8 of
-`docs/TIA-BEST-PRACTICES.md`): FBs as the unit of reuse (stateful, instance DBs), FCs as
+Author the **offline** PLC program per the professional baseline (TIA best-practices, §0/§4/§5/§8): FBs as the unit of reuse (stateful, instance DBs), FCs as
 stateless utilities, global DBs minimized; **every** interface and structured datum
 typed with a **UDT**; **optimized** block access; **100% symbolic** addressing; the
 right language per task (LAD/FBD interlocks, SCL algorithms, GRAPH sequencers); one

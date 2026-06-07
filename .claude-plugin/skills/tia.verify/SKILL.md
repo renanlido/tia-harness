@@ -11,8 +11,8 @@ description: >-
 
 # tia.verify — the verification ladder, rungs 0–3 (class M-off)
 
-Prove a project "works in practice" offline, the only honest pre-deploy evidence. From
-`docs/TIA-BEST-PRACTICES.md` §12: **rung 0** static (`spec.validate`), **rung 1** compile +
+Prove a project "works in practice" offline, the only honest pre-deploy evidence. The
+verification ladder (TIA best-practices baseline §12): **rung 0** static (`spec.validate`), **rung 1** compile +
 consistency, **rung 2** project-as-code diff, **rung 3** simulation (PLCSIM, future). A
 **clean compile is the precondition (Gd9)** for export *and* download — so this gate-keeps
 `tia.handoff`.

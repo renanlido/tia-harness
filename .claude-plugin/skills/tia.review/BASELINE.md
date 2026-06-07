@@ -1,6 +1,6 @@
 # tia.review — baseline checklist (authoritative rule table)
 
-The non-negotiable baseline from `docs/TIA-BEST-PRACTICES.md` §0, expressed as audit
+The non-negotiable baseline (TIA best-practices §0), expressed as audit
 rules. Each rule: **what to read** (which `tia` read tool), the **predicate** (pass
 condition), and **severity** (`error` = breaks the baseline; `warning` = style/maintainability).
 All reads are class R (read-only).

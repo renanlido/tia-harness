@@ -12,8 +12,8 @@ description: >-
 
 # tia.review — audit an existing project vs the baseline (class R, read-only)
 
-Audit a **connected** TIA project against the non-negotiable baseline of
-`docs/TIA-BEST-PRACTICES.md` §0 and the naming/architecture rules (§4/§5/§8). It is a
+Audit a **connected** TIA project against the non-negotiable baseline (TIA
+best-practices §0) and the naming/architecture rules (§4/§5/§8). It is a
 **read-only review**: it enumerates the project model through the `tia` MCP read tools and
 reports deviations — it **never** changes anything.
 

@@ -12,8 +12,8 @@ description: >-
 
 # spec.validate — deterministic project-spec validation (class R, rung 0)
 
-Validate a structured TIA **project-spec** (the input model of
-`docs/TIA-BEST-PRACTICES.md` §13.2) and report every violation by **named rule**.
+Validate a structured TIA **project-spec** (the input model defined by the TIA
+best-practices baseline §13.2) and report every violation by **named rule**.
 
 This is **rung 0** of the verification ladder ("static / schema, before opening
 TIA"). It is **class R: deterministic, read-only, and uses NO MCP tool** — no `tia`

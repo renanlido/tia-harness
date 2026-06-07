@@ -15,7 +15,7 @@ tools: Read, Grep, Glob
 
 ## Role
 
-Run the **verification ladder** (`docs/TIA-BEST-PRACTICES.md` §12, the rung table) as
+Run the **verification ladder** (TIA best-practices baseline, §12 — the rung table) as
 the build self-check: **rung 0** static/schema (`spec.validate`) → **rung 1** compile +
 consistency → **rung 2** project-as-code export/round-trip → **rung 3** simulation. A
 **clean compile is the precondition** for export and download.

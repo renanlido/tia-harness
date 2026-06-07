@@ -19,7 +19,7 @@ Turn hardware/network requirements into a buildable configuration: select the CP
 (family → variant → MLFB via `cpu.select`), assemble the module **plug list** within the
 CPU's expansion limits, and design the **PROFINET/IP** plan — one subnet (typically
 /24), one IO-system per controller interface, unique device names, CPU + IO-devices on
-the **same subnet** (§2/§3 of `docs/TIA-BEST-PRACTICES.md`).
+the **same subnet** (TIA best-practices baseline, §2/§3).
 
 ## Guardrails
 

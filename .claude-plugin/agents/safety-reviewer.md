@@ -19,7 +19,7 @@ tools: Read, Grep, Glob
 Inspect and **report** on functional-safety (F) content so a human can review it:
 F-signatures (change/integrity), F-runtime groups (max 2), PROFIsafe addresses,
 F-monitoring times, and whether the F-program is kept separate from the standard program
-(`docs/TIA-BEST-PRACTICES.md` §9). Output is a **read-only review**, never a change.
+(TIA best-practices baseline, §9). Output is a **read-only review**, never a change.
 
 ## Guardrails (hard — do not violate)
 
@@ -28,7 +28,7 @@ F-monitoring times, and whether the F-program is kept separate from the standard
   reviewed by a **named functional-safety engineer**. This agent **never** authors,
   modifies, downloads, or simulates F-blocks or fail-safe config — it **only reads and
   reports** (gate **G5**, the policy-excluded class in
-  `docs/HARNESS-MCP-ARCHITECTURE.md` §3.8/§4).
+  the harness gates/guards model, §3.8/§4).
 - **Read-only tools only.** No mutating/MCP-write/deploy tool. If asked to change F
   content, **refuse and hand off** to a named safety engineer; surface a
   `requires_human_action` (safety_signoff) note instead of acting.

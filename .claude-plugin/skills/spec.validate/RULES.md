@@ -2,9 +2,9 @@
 
 The authoritative cross-field rules `spec.validate` applies **on top of** the JSON
 Schema (`../../schemas/project-spec.schema.json`). Each rule is deterministic and has a
-stable ID used verbatim in the violation report. Derived from
-`docs/TIA-BEST-PRACTICES.md` §13.2 and §14, `docs/TIA-CPU-REFERENCE.md`, and
-`docs/HARNESS-MCP-ARCHITECTURE.md` (gates/guards). **No rule here calls the MCP** —
+stable ID used verbatim in the violation report. Derived from the TIA best-practices
+baseline (§13.2/§14), the SIMATIC CPU reference, and the harness gates/guards model.
+**No rule here calls the MCP** —
 where a rule can only be *fully* confirmed at runtime (e.g. an MLFB exists in the
 installed catalog), it degrades to a `warning` with a hint to resolve via `GET /catalog`.
 
