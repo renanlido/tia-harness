@@ -208,6 +208,30 @@ Arquivo `~/.codeium/windsurf/mcp_config.json` (sem escopo de projeto), formato `
 **Regras de ouro:** (1) no **Windows**, `cmd /c npx`; (2) no **VS Code**, chave `servers` + `type:"stdio"`;
 (3) defina **`TIA_API_BASE`** apontando pro `serve`; (4) reinicie o cliente após editar o arquivo.
 
+## Acesso remoto (outra máquina → o host do serve)
+
+Por padrão o serve escuta só em **localhost** (seguro, nada exposto). Para alcançá-lo de **outra máquina**
+(ex.: o MCP no seu **Mac** → o serve numa **VM Windows**), o Windows precisa de uma **reserva HTTP.sys**
+(`urlacl`) + a **porta liberada no firewall** — senão o bind em `0.0.0.0`/`+` falha com *Acesso negado*.
+
+**Pela GUI (1 clique — recomendado):** aba **"API"** → botão **"Permitir acesso remoto…"** → confirme o
+**UAC** (admin) e, opcionalmente, **restrinja ao IP de origem** (ex.: o IP do seu Mac). Depois ponha
+**Host = `0.0.0.0`** e **"Iniciar API"**. *(Se você tentar iniciar com Host remoto sem liberar, o app
+detecta o erro e já oferece liberar.)*
+
+**Por linha de comando** (PowerShell **como administrador**):
+
+```powershell
+TIAOpenness.exe setup-remote 5000 --allow 192.168.68.230   # libera SÓ p/ esse IP de origem (recomendado)
+TIAOpenness.exe setup-remote 5000                          # libera p/ a LAN toda
+TIAOpenness.exe setup-remote 5000 --remove                 # desfaz (volta a só-localhost)
+```
+
+> **Segurança:** liberar acesso remoto expõe o serve à rede. O serve continua exigindo **licença ativa**,
+> mas **não autentica clientes individuais** — quem pode conectar é controlado por **firewall/VPN**. Prefira
+> **restringir ao IP** de origem; só libere a LAN toda em rede confiável. No Mac, aponte
+> `TIA_API_BASE=http://<ip-da-vm>:5000`.
+
 ## Diagnóstico
 
 A primeira tool a chamar é **`tia_ping`**: `reachable:false` → IP/porta/firewall/serve desligado;
