@@ -9,10 +9,10 @@
     "email": "renanlido@yahoo.com.br"
   },
   "license": "MIT",
-  "homepage": "https://github.com/renanlido/TIAOpenness",
+  "homepage": "https://github.com/renanlido/tia-harness",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/renanlido/TIAOpenness.git",
+    "url": "git+https://github.com/renanlido/tia-harness.git",
     "directory": ".claude-plugin"
   },
   "keywords": [

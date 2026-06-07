@@ -5,6 +5,19 @@ it turns a structured engineering spec into a *compliant-by-construction*, *veri
 project and **stops at the human gates** for anything that touches the controller. This plugin
 is the open client layer; the TIA Openness `serve` / API it talks to is a separate product.
 
+## How it fits together
+
+Three pieces, split by what runs where:
+
+- **`tia-harness`** (this plugin, **MIT**) — the **client**: skills + subagents that reason
+  about the project and drive the tools, inside Claude Code.
+- **`@renanlido/tia-openness-mcp`** (npm, **MIT**) — the **bridge** the plugin auto-registers
+  (`npx -y @renanlido/tia-openness-mcp`): a thin MCP→HTTP client, no Openness/net48 itself.
+- **TIA Openness `serve` / API** (separate product) — the **engine** on a Windows host with
+  TIA Portal V21, activated by a license. Without it, the MCP can only diagnose connectivity.
+
+The plugin and the MCP are open and free; the `serve` is what actually talks to TIA Portal.
+
 ## Install
 
 ```text
@@ -70,5 +83,5 @@ MCP server on npm: **`@renanlido/tia-openness-mcp`** (`npx -y @renanlido/tia-ope
 
 ## License
 
-**TBD** — the plugin is intended as an open client layer; a permissive license (MIT or
-Apache-2.0) is planned. Until a `LICENSE` file is added, © the author, all rights reserved.
+**MIT** — see [LICENSE](LICENSE). This plugin is the open client layer; the TIA Openness
+`serve` / API it talks to is a separate, proprietary product.

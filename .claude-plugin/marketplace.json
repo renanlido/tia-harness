@@ -12,7 +12,7 @@
       "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness: skills (spec.validate, cpu.select, spec.plan, tia.review, tia.scaffold, tia.verify, tia.handoff) + 4 subagents + the `tia` MCP server (compliant-by-construction authoring, gated deploy).",
       "version": "0.1.0",
       "author": { "name": "Renan Oliveira", "email": "renanlido@yahoo.com.br" },
-      "homepage": "https://github.com/renanlido/TIAOpenness",
+      "homepage": "https://github.com/renanlido/tia-harness",
       "category": "productivity",
       "tags": ["siemens", "tia-portal", "openness", "plc", "industrial-automation", "iec-61131-3", "mcp", "s7-1500", "s7-1200"]
     }
