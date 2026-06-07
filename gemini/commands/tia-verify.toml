@@ -1,0 +1,59 @@
+description = "Run the offline VERIFICATION LADDER on an open TIA project — compile, consistency, project-as-code (class M-off, stops at deploy)."
+
+prompt = """
+You are running the `tia.verify` workflow (port of the Claude Code skill of the same name).
+
+GOAL: Prove a project "works in practice" OFFLINE — the only honest pre-deploy evidence. Run the
+verification ladder: rung 0 static (spec.validate), **rung 1** compile + consistency, **rung 2**
+project-as-code export/diff, rung 3 simulation (PLCSIM, FUTURE — note it, don't fake it). A CLEAN
+compile is the precondition (Gd9) for export AND download — so this gate-keeps tia.handoff. It is
+**class M-off**: compiles via the `tia` MCP, repairs the known bare-CPU protection errors and
+re-compiles, then STOPS at deploy (G3/G4 are gated).
+
+INPUT (optional focus / scope): {{args}}
+
+PRECONDITION: A project OPEN (`tia_status` -> `hasProject:true`). Connecting is G1 — defer to the
+human.
+
+TOOLS:
+- `tia_compile` (per CLP) — returns `{ state, errors, warnings, messages[] (tree), verification,
+  nextHints }`.
+- `tia_plc_blocks` — `isConsistent` per block (stale => recompile).
+- `tia_export_xml` — rung 2: export blocks/types to SimaticML for a git diff (round-trip proof).
+- Protection repair (when compile shows the bare-CPU errors): `tia_obj_service` + `tia_obj_invoke
+  Protect` + `tia_obj_set_attributes PlcProtectionAccessLevel=FullAccess`.
+
+PROCEDURE (in order):
+1. **Confirm open** (`tia_status`).
+2. **Rung 1 — compile** each CLP (`tia_compile`). Interpret: ONLY `State=Error` blocks; warnings
+   never block (Gd8). The message tree's intermediate nodes have empty descriptions — RECURSE TO THE
+   LEAVES for the real error text (don't report "3 errors" with no text).
+3. **Auto-repair the known case.** If the errors are the bare-CPU PROTECTION signature
+   (confidential-config password / communication certificate / access level), apply the protection
+   recipe and RE-COMPILE. Re-run is idempotent.
+4. **Consistency.** Confirm `isConsistent` on the blocks (`tia_plc_blocks`); a freshly imported
+   block — or an instance DB whose FB interface changed — comes back inconsistent until compiled. The
+   cure is a (software-scope) RE-COMPILE, which `tia_compile` does and which REGENERATES the instance
+   DB (false->true). Re-run `tia_compile` and re-check; never delete/recreate the instance DB, and
+   never reach for `UpdateProgram()` (it does not regenerate and can mark other blocks stale).
+5. **Rung 2 (optional) — project-as-code.** `tia_export_xml` to a directory for a git diff /
+   round-trip proof. Rung 3 (PLCSIM) is FUTURE — note it, don't fake it.
+6. **Report + hand off.** If `errors:0`, state that Gd9 is satisfied -> tia.handoff may prepare the
+   (gated) download. If errors remain, list the leaf messages + fixes; do NOT proceed to deploy.
+
+OUTPUT:
+- Per CLP: `compiled` = `clean` | `error`, `errors`, `warnings`, and — if errors — the LEAF messages
+  (the real text; recurse the tree, intermediate nodes are empty by design).
+- A ladder verdict: which rungs passed (0 static, 1 compile/consistency, 2 export-diff) and whether
+  deploy (tia.handoff) is unblocked.
+
+HARD GUARANTEES:
+- Compile-clean gate-keeps deploy (Gd9). Never let tia.handoff/download proceed with any `Error`.
+  Warnings are allowed (report them).
+- Recurse the tree. Real errors live in the leaf `messages`; summarizing only the count is a failure.
+- M-off only. Compile/export/protection-repair are offline. Download/online (G3/G4) are gated and
+  live in tia.handoff.
+- Safety. Never modify F-logic to "make it compile" (G5); report and defer to the human.
+
+See `../GEMINI.md` for the gates/guards and tool map.
+"""

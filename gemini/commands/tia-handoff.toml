@@ -1,0 +1,65 @@
+description = "Prepare a human-approval envelope for a GATED operation (download/online/scan/secret/safety). NEVER performs the gated action (class GATE)."
+
+prompt = """
+You are running the `tia.handoff` workflow (port of the Claude Code skill of the same name).
+
+GOAL: The harness is an ASSISTANT UP TO THE GATE, never an autonomous commissioner. Anything that
+touches the physical controller, the network, secrets, or safety STOPS here. This workflow assembles
+the approval envelope (`requires_human_action`) — what CAN be done, what the human MUST do, the plan
++ hash, and the exact resume call — and then STOPS. It is **class GATE**: it NEVER performs the gated
+action. The AI never approves, never invents a secret, never deploys F autonomously.
+
+INPUT (what the user wants to deploy / do — e.g. "download to PLC_1", "go online", "scan network"):
+{{args}}
+
+THE GATES (and the tool that fronts each):
+- **G1** open/connect project (1st time) — `tia_connect` (+ `tia_show_ui`) — human confirms the TIA
+  trust dialog on the serve host.
+- **G3** DOWNLOAD (CPU STOP -> overwrite -> restart) — `tia_download` — human approves the load
+  preview: StopAll, OverwriteSystemData, StartModule.
+- **G4** go online (connect to live CPU) — `tia_online` — human confirms it is safe to connect to
+  the target machine.
+- **G7** network scan (accessible devices) — `tia_accessible_devices` — human approves probing the
+  local network via the PG/PC NIC.
+- **G6** master secret / UMAC — `tia_mastersecret_set` (+ umac connect) — human SUPPLIES the secret.
+- **G5** safety / F author-modify-download — NO tool; NEVER autonomous; F deploy is a human, gated
+  action.
+
+(Note: the table above is APPROVAL gates — a human approves an ACTION. There is a second class:
+GUI-CONFIG gates — a human CLICKS a setting TIA does not expose via Openness (OPC UA runtime
+license / server interface, PUT/GET, the first-connect trust dialog). Those surface during
+scaffold/verify — e.g. a compile error "OPC UA license is not sufficient" is a GATE, not a bug.
+Don't retry them blindly; the exact GUI steps are in `../GEMINI.md` -> "Human interaction points
+(GUI gates)".)
+
+PROCEDURE (in order):
+1. **Precondition (Gd9).** Confirm the latest `tia_compile` is CLEAN (`errors:0`) via the tia.verify
+   workflow. Never prepare a download for an inconsistent project.
+2. **Discover the path (G7, gated).** Connection mode / PG-PC interface / target interface are
+   localized names — discover them with `tia_accessible_devices` (needs `confirm:true`, a network
+   scan => itself a gate) or `tia_connections_diagnose`.
+3. **Dry-run the download.** `tia_download { dryRun:true }` -> returns `plan`, **`planHash`**,
+   `loadPreview` (StopAll / Overwrite / StartModule), and the Gd9 note. NOTHING is sent.
+4. **Emit the handoff envelope** (`requires_human_action`):
+   - `canDo` — e.g. "download to PLC_1".
+   - `youMustDo` — the concrete physical consequence (the CPU will STOP, system data is overwritten,
+     the CPU restarts) + confirm it is safe on the target line.
+   - `plan` + `planHash` — the exact binding.
+   - `resume` — the precise call a human runs after approving: `tia_download { approved:true,
+     planHash:"<the hash>", ... }` (the same plan; the hash binds approval to the reviewed plan).
+5. **STOP.** Do NOT call `tia_download` with `approved:true` yourself. A human approves out-of-band
+   and runs the resume call (or explicitly instructs you to, with the hash).
+
+HARD GUARANTEES:
+- Never auto-approve / auto-deploy. This workflow outputs a plan + resume instructions; it does not
+  perform the gated action. `approved:true` + a matching `planHash` only ever come from an explicit
+  human decision.
+- Secrets are human-supplied (G6). Master secret / UMAC password come from a human or a credential
+  vault — NEVER invented by the AI, never logged, never put in config.
+- Safety never autonomous (G5). F-program author/modify/download is always a gated, human action.
+  The harness only reports F (signatures); the safety-reviewer is read-only.
+- Plan binding. The download executes only with the EXACT `planHash` from the dry-run — a changed
+  plan invalidates the approval (re-review).
+
+See `../GEMINI.md` for the gates/guards, the GUI-config gates, and the tool map.
+"""

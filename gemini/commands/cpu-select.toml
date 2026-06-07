@@ -1,0 +1,60 @@
+description = "Recommend a Siemens S7-1500/S7-1200 CPU + variant + order number (MLFB) from an engineering need (class R, no MCP)."
+
+prompt = """
+You are running the `cpu.select` workflow (port of the Claude Code skill of the same name).
+
+GOAL: Map an engineering NEED to a concrete SIMATIC CPU recommendation: family ->
+sub-family/variant -> a representative order number (MLFB) -> the TIA `TypeIdentifier` string. This
+is **class R**: a deterministic heuristic over the curated CPU reference. It uses **NO MCP tool**
+and does not open TIA. The curated table is a CONVENIENCE reference, NOT ground truth — so the
+recommendation always ends with a flag to RESOLVE the concrete MLFB + firmware against `GET
+/catalog` on the target machine before any device creation.
+
+INPUT: The engineering need — any of: digital/analog I/O count, scan-time/performance target,
+program + data memory size, number/type of fieldbus ports (PROFINET, PROFIBUS DP), safety (SIL/PL),
+redundancy/availability, motion class (basic positioning vs synchronized/cam/kinematics),
+PC-based/edge, on-board display, budget/engineering tool: {{args}}
+If none is provided, ask the user for their selection criteria.
+
+PROCEDURE (deterministic decision order):
+1. **Family — S7-1200 vs S7-1500.**
+   - S7-1200 for cost-sensitive serial OEM machines with fixed scope, small/medium I/O, basic PTO
+     motion, STEP 7 Basic budget, compact footprint.
+   - S7-1500 for performance/fast scan, large memory (code AND data), advanced motion (servo/IRT),
+     heavy diagnostics, many distributed I/O, evolving scope, or when STL/GRAPH or an on-board
+     display is required.
+2. **S7-1500 tier & sub-family — apply criteria in order** (each narrows the choice): I/O
+   count/address space -> scan-time/performance (bit-op time) -> memory (program AND data;
+   prioritize the data figure if DBs/recipes/trace are large) -> communication (1 PN = 1511/1513;
+   2 PN = 1515; add DP => `-3 PN/DP` 1516/1517, `-4` 1518) -> safety (any safety function => an **F**
+   CPU) -> redundancy (**R**/**H**/**HF**) -> motion (synchronized/cam/kinematics => **T/TF**) ->
+   custom code/edge (**MFP/ODK**) -> PC-based (software **1505S/1507S/1508S** or Open Controller).
+3. **S7-1200 size & variant:** 1211C/1212C (very small) -> 1214C (workhorse) -> 1215C (analog out,
+   2 PN, redundant 24 V) -> 1217C (1 MHz differential motion); FC models (1212FC/1214FC/1215FC) for
+   machine safety. Then pick the power/output variant: **DC/DC/DC** for transistor/high-speed PTO;
+   AC/DC/Relay or DC/DC/Relay for slow relay switching (no on-board high-speed pulses).
+4. **Assemble the TypeIdentifier:** `OrderNumber:<MLFB>/V<fw>` — forward slash before V, NEVER `:V`
+   (known V21 drift bug). Treat MLFB and firmware as INDEPENDENT axes.
+5. **Always append the resolve note** and any capability gates. If the need is ambiguous, state the
+   assumption and offer the closest tier up and down.
+
+OUTPUT a recommendation containing: `family`, `model`/`subFamily`, `mlfb` (representative order
+number), `firmware` (representative `/V<major>.<minor>`, marked as needing catalog confirmation),
+`typeIdentifier` (assembled `OrderNumber:<MLFB>/V<fw>`), `variant` (for S7-1200: DC/DC/DC vs relay),
+`justification` (which criteria selected each axis, cite the decision step), `resolveNote` (ALWAYS:
+"Confirm this MLFB + firmware exists via `GET /catalog` and pass the returned
+`typeIdentifierNormalized` to device.create; do not hand-build the string in production"), and
+`capabilityNotes` (gates implied: relay variant => no on-board PTO; S7-1200 => no STL/GRAPH; F-CPU
+=> safety logic is human-authored/gated, never autonomous).
+
+HARD GUARANTEES:
+- NO MCP / NO TIA. Selection is offline. The only authoritative CPU list at runtime is
+  `GET /catalog`; this skill RECOMMENDS a candidate to resolve, it does not instantiate anything.
+- Deterministic decision order: same need -> same recommendation, each axis justified.
+- Resolve before build: the curated numbers drift by catalog generation; confirm against the live
+  catalog before any device creation.
+- Safety stays gated: recommending an F-CPU is fine; authoring/modifying/downloading F-logic is
+  NEVER autonomous (IEC 61511, gate G5) — note this whenever an F-CPU is recommended.
+
+See `../GEMINI.md` for the gates/guards and tool map.
+"""

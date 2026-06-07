@@ -77,6 +77,24 @@ The harness is an **assistant up to the gate, never an autonomous commissioner**
   by name · `OrderNumber:<MLFB>/V<fw>` format · serial-only tool calls · untrusted-input
   (a spec never auto-crosses a gate).
 
+## Other AI clients (Codex, Gemini CLI, Cursor, VS Code, …)
+
+The `tia` **MCP** works in any MCP client, not just Claude Code — it's the same `npx` package. The
+canonical, copy-paste install for **Claude Code, Claude Desktop, Codex (CLI/IDE), Gemini CLI, Cursor,
+VS Code, and Windsurf** (with the Windows `cmd /c npx` and the VS Code `servers` gotchas) is in
+**[docs/INSTALL.md](docs/INSTALL.md)**.
+
+This repo also ships **native ports of the harness** (the same skills, subagents, gates, and recipes)
+for two more ecosystems:
+
+- **[codex/](codex/)** — Codex port: `AGENTS.md` (operating guide) + subagents (`agents/*.toml`) +
+  skills (`skills/*/SKILL.md`). See [codex/README.md](codex/README.md).
+- **[gemini/](gemini/)** — Gemini CLI port: `GEMINI.md` + subagents (`agents/*.md`) + the skills as
+  custom commands (`commands/*.toml`). See [gemini/README.md](gemini/README.md).
+
+The Claude Code plugin is the reference; its operating guide
+([.claude-plugin/CLAUDE.md](.claude-plugin/CLAUDE.md)) is the canonical source the Codex/Gemini guides mirror.
+
 ## Related
 
 MCP server on npm: **`@renanlido/tia-openness-mcp`** (`npx -y @renanlido/tia-openness-mcp`).

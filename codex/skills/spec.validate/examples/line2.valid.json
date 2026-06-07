@@ -1,0 +1,85 @@
+{
+  "project": {
+    "name": "Line2",
+    "directory": "C:\\TIA\\Line2",
+    "standards": ["IEC 61131-3", "ISA-88"]
+  },
+  "conventions": {
+    "namingScheme": "plcopen",
+    "optimizedAccess": true,
+    "symbolicOnly": true,
+    "defaultLanguages": { "interlocks": "LAD", "algorithms": "SCL", "sequencers": "GRAPH" }
+  },
+  "devices": [
+    {
+      "name": "Line2_CPU",
+      "typeIdentifier": "OrderNumber:6ES7 511-1AK02-0AB0/V2.9",
+      "role": "cpu",
+      "family": "S7-1500",
+      "modules": [
+        { "order": "OrderNumber:6ES7131-6BF01-0BA0/V0.0", "slot": 65535, "kind": "SM" }
+      ]
+    },
+    {
+      "name": "Line2_ET200SP_01",
+      "typeIdentifier": "OrderNumber:6ES7 155-6AU01-0BN0/V4.2",
+      "role": "io-device",
+      "family": "ET200SP"
+    }
+  ],
+  "network": {
+    "subnet": { "type": "System:Subnet.Ethernet", "name": "PN_Line2", "cidr": "192.168.0.0/24" },
+    "nodes": [
+      { "device": "Line2_CPU", "ip": "192.168.0.1", "createIoSystem": true },
+      { "device": "Line2_ET200SP_01", "ip": "192.168.0.10" }
+    ]
+  },
+  "dataTypes": [
+    {
+      "name": "UDT_Motor",
+      "members": [
+        { "name": "xStart", "dataType": "Bool", "comment": "Start command" },
+        { "name": "xRunning", "dataType": "Bool", "comment": "Running feedback" },
+        { "name": "rSpeed", "dataType": "Real", "comment": "Speed [%]" }
+      ]
+    }
+  ],
+  "tagTables": [
+    { "name": "IO", "purpose": "IO" }
+  ],
+  "tags": [
+    { "table": "IO", "name": "Conv01_Run", "dataType": "Bool", "address": "%Q0.0", "unit": "" }
+  ],
+  "functionalUnits": [
+    {
+      "unit": "Conveyor01",
+      "equipmentModules": [
+        {
+          "name": "Drive",
+          "controlModules": [
+            { "name": "M01", "libraryType": "FB_Motor@1.2", "instanceDb": "DB_M01" }
+          ]
+        }
+      ]
+    }
+  ],
+  "reuse": { "library": "CompanyStd", "types": ["FB_Motor@1.2", "FB_Valve@2.0"] },
+  "hmi": {
+    "screens": ["Overview", "Conv01"],
+    "faceplates": ["FP_Motor"],
+    "alarmClasses": [{ "name": "Warning", "ack": true }]
+  },
+  "safety": { "required": false },
+  "languages": ["en-US", "pt-BR"],
+  "verification": {
+    "ladder": ["validate", "compile", "consistency"],
+    "tests": [
+      { "stimulus": { "Conv01_Start": true }, "expect": { "Conv01_Run": true } }
+    ]
+  },
+  "deployment": {
+    "approvalRequired": true,
+    "target": { "connectionMode": "PN/IE", "pcInterfaceName": "<NIC>", "targetInterfaceName": "1 X1" }
+  },
+  "autonomous": false
+}

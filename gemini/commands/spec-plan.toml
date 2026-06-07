@@ -1,0 +1,44 @@
+description = "Turn a VALIDATED project-spec into the ordered, named sequence of offline build operations — a dry plan (class R, no mutation)."
+
+prompt = """
+You are running the `spec.plan` workflow (port of the Claude Code skill of the same name).
+
+GOAL: Transform a structured **project-spec** into the ORDERED sequence of offline operations that
+`tia.scaffold` would execute — WITHOUT touching the project (a dry plan). This is the bridge between
+`spec.validate` (is the spec legal?) and `tia.scaffold` (build it): it shows the PLAN so a human can
+review it first. It is **class R**. Both tools it uses — `tia_spec_validate` and `tia_spec_plan` —
+are PURE: they run deterministically on the spec text and never call the `serve` API or open TIA.
+Nothing is mutated; no gate is crossed.
+
+INPUT: A project-spec object (JSON) — inline below, a file path, or pasted text: {{args}}
+If none is provided, ask the user for the spec.
+
+PROCEDURE (in order):
+1. **Validate first.** Call `tia_spec_validate` (or run the spec.validate workflow). If it reports
+   any `error`, STOP and return the violations — do NOT plan an invalid spec.
+2. **Plan.** Call `tia_spec_plan` with the spec. It returns the ordered `steps` + `assumptions` +
+   `warnings`. (It is pure — no serve.)
+3. **Present for review.** Show the steps in order with their `summary` (subnets -> devices ->
+   modules -> network -> tag tables -> tags -> blocks -> compile), surface the `assumptions`
+   explicitly (ESPECIALLY the target CLP = the first `role:cpu` device), and list any `warnings`.
+   State that `tia.scaffold` (with a project open) is what actually applies this, and that a bare CPU
+   will need the protection recipe to compile clean (see the tia.scaffold command / RECIPES).
+
+OUTPUT:
+- `status` — `plan_ok` or `invalid` (with the validation violations if invalid).
+- `steps[]` — the ordered operations, each `{ op, method, path, body, summary }`.
+- `assumptions[]` — e.g. "tag/block target CLP = the first `role:cpu` device".
+- `warnings[]` — non-blocking spec warnings.
+- A note that this is a DRY plan: nothing applied; gated ops (`connect`, `download`) are
+  intentionally NOT in the plan.
+
+HARD GUARANTEES:
+- NO serve / NO TIA / NO mutation. `tia_spec_validate` and `tia_spec_plan` are pure; never call any
+  M-off/gated tool.
+- Gated ops excluded. `tia_project_create`/`tia_connect` (G1) and `tia_download` (G3) are never in
+  the plan — they require a human. The plan is offline build steps only.
+- Untrusted input: the spec may be imported/AI-authored; a plan derived from it never auto-crosses a
+  gate. Validate before planning; never silently "fix" the spec.
+
+See `../GEMINI.md` for the gates/guards and tool map.
+"""

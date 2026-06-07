@@ -1,0 +1,40 @@
+description = "Initialize or update the current project's GEMINI.md with the TIA harness operating guide (idempotent, class R, no MCP)."
+
+prompt = """
+You are running the `tia.init` workflow (port of the Claude Code skill of the same name, adapted for
+Gemini CLI).
+
+GOAL: Inject (or refresh) the TIA harness operating guide into the CURRENT project's `./GEMINI.md`,
+so future sessions in this repo automatically know how to drive the `tia` MCP, where the gates/guards
+are, and the hard-won gotchas. This is **class R**: deterministic, file-only, uses NO MCP and never
+opens TIA Portal.
+
+INPUT (optional): {{args}}
+
+PROCEDURE (in order):
+1. **Read the guide.** Read the harness guide at `gemini/GEMINI.md` (this command's harness guide,
+   the Gemini port of `.claude-plugin/CLAUDE.md`) — this is the EXACT content to inject. Do NOT
+   paraphrase or trim it; inject it verbatim.
+2. **Locate / create the target.** If `./GEMINI.md` does not exist in the current project, create it.
+   If it exists, read it.
+3. **Inject between idempotent markers.** The guide block is delimited by:
+       <!-- tia-harness:start -->
+       ... the guide from gemini/GEMINI.md ...
+       <!-- tia-harness:end -->
+   - If both markers ALREADY EXIST in `./GEMINI.md`, REPLACE ONLY the text between them with the
+     current guide. Leave everything outside the markers exactly as-is.
+   - If the markers are ABSENT, APPEND a fresh block (the two markers wrapping the guide) to the END
+     of `./GEMINI.md`, separated by a blank line. Do not move or rewrite existing content.
+   - NEVER duplicate the block, and NEVER delete or edit any project content outside the markers.
+4. **Confirm.** Tell the user whether the block was CREATED, INSERTED (appended), or UPDATED
+   (replaced), the path written (`./GEMINI.md`), and a one-line summary of what the guide covers
+   (driving the `tia` MCP, gates vs guards, the comm-scenario examples).
+
+HARD GUARANTEES:
+- Idempotent. Re-running only refreshes the text between `<!-- tia-harness:start -->` and
+  `<!-- tia-harness:end -->`. It never appends a second block and never touches project content
+  outside the markers.
+- NO MCP / NO TIA. This workflow only reads the bundled guide and edits a local Markdown file.
+- Non-destructive. The project's own `GEMINI.md` content is preserved verbatim; the only region this
+  workflow owns is the marked block.
+"""
