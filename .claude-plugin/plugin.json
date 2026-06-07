@@ -6,7 +6,7 @@
   "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness for Claude Code. Turns a structured engineering project-spec into a compliant-by-construction, verifiable TIA project, driving the `tia` MCP server over the Openness HTTP API. Ships deterministic, MCP-free skills (spec.validate, cpu.select) that deliver value offline, plus subagents and domain guardrails.",
   "author": {
     "name": "renanlido",
-    "email": "renan.filmagem.oliveira@gmail.com"
+    "email": "renanlido@yahoo.com.br"
   },
   "license": "MIT",
   "homepage": "https://github.com/renanlido/TIAOpenness",
