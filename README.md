@@ -80,17 +80,48 @@ The harness is an **assistant up to the gate, never an autonomous commissioner**
 ## Other AI clients (Codex, Gemini CLI, Cursor, VS Code, …)
 
 The `tia` **MCP** works in any MCP client, not just Claude Code — it's the same `npx` package. The
-canonical, copy-paste install for **Claude Code, Claude Desktop, Codex (CLI/IDE), Gemini CLI, Cursor,
-VS Code, and Windsurf** (with the Windows `cmd /c npx` and the VS Code `servers` gotchas) is in
-**[docs/INSTALL.md](docs/INSTALL.md)**.
+canonical, copy-paste install of the **MCP** for **Claude Code, Claude Desktop, Codex (CLI/IDE),
+Gemini CLI, Cursor, VS Code, and Windsurf** (with the Windows `cmd /c npx` and the VS Code `servers`
+gotchas) is in **[docs/INSTALL.md](docs/INSTALL.md)**.
 
-This repo also ships **native ports of the harness** (the same skills, subagents, gates, and recipes)
-for two more ecosystems:
+The **harness** (skills + subagents) installs differently per client. Claude Code uses the
+marketplace above. **Codex** and **Gemini CLI** have **no plugin marketplace**, so you install the
+harness by **copying the ported files** into their config folders. First clone this repo:
 
-- **[codex/](codex/)** — Codex port: `AGENTS.md` (operating guide) + subagents (`agents/*.toml`) +
-  skills (`skills/*/SKILL.md`). See [codex/README.md](codex/README.md).
-- **[gemini/](gemini/)** — Gemini CLI port: `GEMINI.md` + subagents (`agents/*.md`) + the skills as
-  custom commands (`commands/*.toml`). See [gemini/README.md](gemini/README.md).
+```bash
+git clone https://github.com/renanlido/tia-harness.git
+cd tia-harness
+```
+
+### Codex (CLI + IDE)
+
+```bash
+mkdir -p ~/.codex/agents ~/.agents/skills
+cp    codex/agents/*.toml  ~/.codex/agents/     # subagents
+cp -r codex/skills/*       ~/.agents/skills/    # skills
+cp    codex/AGENTS.md      ~/.codex/AGENTS.md    # operating guide (or copy to a repo root)
+```
+
+Then wire the `tia` MCP in `~/.codex/config.toml` — see **[docs/INSTALL.md](docs/INSTALL.md) →
+Codex**. Full detail: **[codex/README.md](codex/README.md)**.
+
+### Gemini CLI
+
+```bash
+mkdir -p ~/.gemini/agents ~/.gemini/commands
+cp gemini/agents/*.md      ~/.gemini/agents/     # subagents
+cp gemini/commands/*.toml  ~/.gemini/commands/   # the 8 skills, as custom commands
+cp gemini/GEMINI.md        ~/.gemini/GEMINI.md    # operating guide (or copy to a repo root)
+```
+
+Then wire the `tia` MCP in `~/.gemini/settings.json` — see **[docs/INSTALL.md](docs/INSTALL.md) →
+Gemini CLI**. Note: Gemini has **no skill auto-trigger**, so you invoke the skills **explicitly** as
+slash commands: `/spec-validate`, `/cpu-select`, `/spec-plan`, `/tia-review`, `/tia-scaffold`,
+`/tia-verify`, `/tia-handoff`, `/tia-init`. Full detail: **[gemini/README.md](gemini/README.md)**.
+
+> **Windows (PowerShell)** instead of `cp`: use `Copy-Item codex\agents\*.toml
+> $env:USERPROFILE\.codex\agents\` (add `-Recurse` for the `skills` folder) — see the per-port
+> READMEs for the exact PowerShell commands.
 
 The Claude Code plugin is the reference; its operating guide
 ([.claude-plugin/CLAUDE.md](.claude-plugin/CLAUDE.md)) is the canonical source the Codex/Gemini guides mirror.
