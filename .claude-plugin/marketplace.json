@@ -1,7 +1,7 @@
 {
   "name": "tia-openness",
   "description": "Siemens TIA Portal V21 automation — the `tia` MCP server + the specialist harness plugin (skills, subagents, domain guardrails/gates).",
-  "author": {
+  "owner": {
     "name": "Renan Oliveira",
     "email": "renanlido@yahoo.com.br"
   },
