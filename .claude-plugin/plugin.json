@@ -10,11 +10,7 @@
   },
   "license": "MIT",
   "homepage": "https://github.com/renanlido/tia-harness",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/renanlido/tia-harness.git",
-    "directory": ".claude-plugin"
-  },
+  "repository": "https://github.com/renanlido/tia-harness",
   "keywords": [
     "tia-portal",
     "siemens",
@@ -26,21 +22,6 @@
     "iec-61131-3",
     "isa-88",
     "mcp"
-  ],
-  "skills": [
-    "skills/spec.validate",
-    "skills/cpu.select",
-    "skills/spec.plan",
-    "skills/tia.review",
-    "skills/tia.scaffold",
-    "skills/tia.verify",
-    "skills/tia.handoff"
-  ],
-  "agents": [
-    "agents/tia-engineer.md",
-    "agents/hardware-architect.md",
-    "agents/verifier.md",
-    "agents/safety-reviewer.md"
   ],
   "mcpServers": {
     "tia": {
