@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin.json",
   "name": "tia-harness",
   "displayName": "TIA Portal Automation Harness",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness for Claude Code. Turns a structured engineering project-spec into a compliant-by-construction, verifiable TIA project, driving the `tia` MCP server over the Openness HTTP API. Ships deterministic, MCP-free skills (spec.validate, cpu.select) that deliver value offline, plus subagents and domain guardrails.",
   "author": {
     "name": "renanlido",

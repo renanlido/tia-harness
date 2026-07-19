@@ -33,6 +33,14 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
 | **G6** | master secret / UMAC | `tia_mastersecret_set`, `connect umac*` | supply the secret (human/credential vault) |
 | **G5** | safety/F author·modify·download | — | **never autonomous**; F deploy is a human, gated action |
 
+> **Two classes of human interaction.** The table above is **approval gates** — a human *approves an
+> action* that touches the controller, network, secrets, or safety. There is a second class:
+> **GUI-config gates** — a human *clicks a setting* that TIA does **not** expose via Openness (the OPC UA
+> runtime license / server interface, PUT/GET, the first-connect trust dialog). Those surface during
+> **scaffold/verify** — e.g. a compile error *"OPC UA license is not sufficient"* is a **gate, not a bug**.
+> Don't retry them blindly; the exact GUI steps for each are in the harness guide
+> (`.claude-plugin/CLAUDE.md` → **"Human interaction points (GUI gates)"**).
+
 ## Procedure (in order)
 
 1. **Precondition (Gd9).** Confirm the latest `tia_compile` is **clean** (`errors:0`) via

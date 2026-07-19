@@ -4,14 +4,19 @@ description: >-
   Hardware + network specialist: CPU/module selection, plug lists, PROFINET/IP topology.
   Use to choose a CPU (delegates to cpu.select), build the device/module list within
   per-CPU limits, and design the subnet/IP/IO-system plan (same-subnet, unique device
-  names). STUB.
-tools: Read, Grep, Glob
+  names). Class R STRICT: reads the catalog/project, proposes — the main loop mutates.
+tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_catalog, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_devices, mcp__plugin_tia-harness_tia__tia_device_tree, mcp__plugin_tia-harness_tia__tia_device_connections, mcp__plugin_tia-harness_tia__tia_subnets, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info
 ---
 
-# hardware-architect (subagent stub)
+# hardware-architect
 
-> Scaffold. The MCP runtime tools (catalog/device.create/network.* — M1/M3) are not all
-> live yet; the definition is portable and the `cpu.select` reasoning works now.
+## Operating knowledge
+
+Before the first `tia_*` call of a session, read `tia_guide` topics: `spec-format`, `gotchas`.
+Two rules are absolute here: **serial-only** — the serve is ONE serial worker, so never
+fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
+agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
+tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
 
 ## Role
 

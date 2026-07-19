@@ -34,8 +34,10 @@ PROCEDURE (in order):
 4. **Consistency.** Confirm `isConsistent` on the blocks (`tia_plc_blocks`); a freshly imported
    block — or an instance DB whose FB interface changed — comes back inconsistent until compiled. The
    cure is a (software-scope) RE-COMPILE, which `tia_compile` does and which REGENERATES the instance
-   DB (false->true). Re-run `tia_compile` and re-check; never delete/recreate the instance DB, and
-   never reach for `UpdateProgram()` (it does not regenerate and can mark other blocks stale).
+   DB (false->true) IN MOST CASES. Re-run `tia_compile` and re-check; only if it still reports
+   inconsistent after a compile, delete it (`tia_block_delete`) and recreate it
+   (`tia_instancedb_create`), then recompile — never reach for `UpdateProgram()` (it does not
+   regenerate and can mark other blocks stale).
 5. **Rung 2 (optional) — project-as-code.** `tia_export_xml` to a directory for a git diff /
    round-trip proof. Rung 3 (PLCSIM) is FUTURE — note it, don't fake it.
 6. **Report + hand off.** If `errors:0`, state that Gd9 is satisfied -> tia.handoff may prepare the

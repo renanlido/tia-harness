@@ -33,8 +33,9 @@ consistency → **rung 2** project-as-code export/round-trip → **rung 3** simu
   that only touched the device item.
 - **Consistency (Gd10):** check `IsConsistent`; imported blocks come back inconsistent
   until compiled. Changing an **FB interface** leaves its **instance DB**
-  `IsConsistent:false` — a **software-scope compile regenerates it** (verified: false→true,
-  no delete/recreate). Do **not** delete/recreate the instance DB, and do **not** use
+  `IsConsistent:false` — **recompile first** (a **software-scope compile regenerates it**
+  in most cases, verified: false→true); only if it still reports inconsistent after a
+  compile, delete it and recreate it, then recompile. Do **not** use
   `PlcSoftware.UpdateProgram()` for this (verified: it does *not* regenerate, and can mark
   other blocks stale).
 - **Read-only verdict.** The verifier reports pass/fail and what is now unblocked; it

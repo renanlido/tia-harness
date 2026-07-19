@@ -1,4 +1,4 @@
-description = "Initialize or update the current project's GEMINI.md with the TIA harness operating guide (idempotent, class R, no MCP)."
+description = "Initialize or update the current project's GEMINI.md with the TIA harness operating guide (idempotent, class R, no serve/TIA)."
 
 prompt = """
 You are running the `tia.init` workflow (port of the Claude Code skill of the same name, adapted for
@@ -6,20 +6,31 @@ Gemini CLI).
 
 GOAL: Inject (or refresh) the TIA harness operating guide into the CURRENT project's `./GEMINI.md`,
 so future sessions in this repo automatically know how to drive the `tia` MCP, where the gates/guards
-are, and the hard-won gotchas. This is **class R**: deterministic, file-only, uses NO MCP and never
-opens TIA Portal.
+are, and the hard-won gotchas. This is **class R**: deterministic, file-only, never opens TIA Portal and never touches the serve — the only MCP call it may make is the pure, offline tia_guide.
 
 INPUT (optional): {{args}}
 
 PROCEDURE (in order):
-1. **Read the guide.** Read the harness guide at `gemini/GEMINI.md` (this command's harness guide,
-   the Gemini port of `.claude-plugin/CLAUDE.md`) — this is the EXACT content to inject. Do NOT
-   paraphrase or trim it; inject it verbatim.
+1. **Read the guide.** Read the harness guide from the FIRST of these that exists — this is the
+   EXACT content to inject. Do NOT paraphrase or trim it; inject it verbatim.
+     a. The `tia` MCP, if available in this session: call the `tia_guide` tool with
+        {"topic":"full"} and use the returned markdown. Preferred: always matches the
+        installed MCP version; pure/offline (needs no serve, opens nothing).
+     b. `~/.gemini/GEMINI.md` — where the harness install step puts it. The guide block
+        sits between `<!-- tia-harness:start/end -->` markers; inject ONLY the text
+        between the markers.
+     c. `gemini/GEMINI.md` — only when running from a CLONE of the harness repo itself
+        (same markers rule).
+   ⚠️ Do NOT read `./GEMINI.md` (the target project's own file) as the source — that is the file
+   this workflow WRITES to, and reading it as the guide would re-inject whatever is already there.
+   If neither path exists, STOP and tell the user to install the guide
+   (`Copy-Item gemini\GEMINI.md $env:USERPROFILE\.gemini\GEMINI.md`). Do NOT reconstruct the guide
+   from memory — the gates and gotchas in it are safety-relevant.
 2. **Locate / create the target.** If `./GEMINI.md` does not exist in the current project, create it.
    If it exists, read it.
 3. **Inject between idempotent markers.** The guide block is delimited by:
        <!-- tia-harness:start -->
-       ... the guide from gemini/GEMINI.md ...
+       ... the guide read in step 1 (~/.gemini/GEMINI.md) ...
        <!-- tia-harness:end -->
    - If both markers ALREADY EXIST in `./GEMINI.md`, REPLACE ONLY the text between them with the
      current guide. Leave everything outside the markers exactly as-is.
@@ -28,13 +39,14 @@ PROCEDURE (in order):
    - NEVER duplicate the block, and NEVER delete or edit any project content outside the markers.
 4. **Confirm.** Tell the user whether the block was CREATED, INSERTED (appended), or UPDATED
    (replaced), the path written (`./GEMINI.md`), and a one-line summary of what the guide covers
-   (driving the `tia` MCP, gates vs guards, the comm-scenario examples).
+   (driving the `tia` MCP, gates vs guards, the GUI-gate handoffs, the runtime-validated gotchas
+   and recipes).
 
 HARD GUARANTEES:
 - Idempotent. Re-running only refreshes the text between `<!-- tia-harness:start -->` and
   `<!-- tia-harness:end -->`. It never appends a second block and never touches project content
   outside the markers.
-- NO MCP / NO TIA. This workflow only reads the bundled guide and edits a local Markdown file.
+- NO serve / NO TIA. The only MCP call this workflow may make is the pure, offline tia_guide; it never opens TIA Portal.
 - Non-destructive. The project's own `GEMINI.md` content is preserved verbatim; the only region this
   workflow owns is the marked block.
 """

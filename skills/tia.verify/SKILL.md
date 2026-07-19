@@ -47,7 +47,11 @@ consistency, **rung 2** project-as-code diff, **rung 3** simulation (PLCSIM, fut
    (confidential-config password / communication certificate / access level), apply the
    `RECIPES.md` protection recipe and **re-compile**. Re-run is idempotent.
 4. **Consistency.** Confirm `isConsistent` on the blocks (`tia_plc_blocks`); a freshly
-   imported block can come back inconsistent until compiled.
+   imported block — or an **instance DB whose FB interface changed** — comes back
+   inconsistent until compiled. The cure is a **(software-scope) re-compile**, which
+   `tia_compile` does and which **regenerates** the instance DB (verified: false→true).
+   Re-run `tia_compile` and re-check; never delete/recreate the instance DB, and never
+   reach for `UpdateProgram()` (it does not regenerate and can mark other blocks stale).
 5. **Rung 2 (optional) — project-as-code.** `tia_export_xml` to a directory for a git diff /
    round-trip proof. Rung 3 (PLCSIM) is **future** — note it, don't fake it.
 6. **Report + hand off.** If `errors:0`, state that **Gd9 is satisfied** → `tia.handoff` may

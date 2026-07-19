@@ -15,18 +15,21 @@
 8. **Blocks** — FB shells (`tia_fb_create`) + instance DBs (`tia_instancedb_create`);
    logic via `tia_source_put` (SCL) or `tia_import_xml` (LAD/FBD/GRAPH). Gd6 format routing.
 9. **Compile** (`tia_compile`) — the verifier; only `Error` blocks. It compiles the **software**
-   scope (not just the CPU device item), so it makes freshly-generated blocks consistent **and
-   regenerates** any instance DB left inconsistent by an FB interface change — re-compile, never
-   delete/recreate the instance DB.
+   scope (not just the CPU device item), so it makes freshly-generated blocks consistent and, in
+   most cases, **regenerates** any instance DB left inconsistent by an FB interface change.
+   **Recompile first**; only if the DB still reports inconsistent after a compile, delete it
+   (`tia_block_delete`), recreate it (`tia_instancedb_create`) and recompile.
 
-## Recipe — unlock a freshly-created CPU so it compiles clean (VERIFIED, V21 / S7-1500 V2.9)
+## Recipe — unlock a freshly-created CPU so it compiles clean (VERIFIED V21, firmware-dependent)
 
-A bare CPU added via Openness fails `compile` with **protection** errors (verified
-2026 against a real S7-1500 1516-3 V2.9 — 3 errors): the *confidential-PLC-configuration-
-data* password is unset, the *communication certificate* can't be generated without it,
-and the *access level* defaults to a protected level needing a password. Fix, in order:
+A bare CPU added via Openness may fail `compile` with **protection** errors: the
+*confidential-PLC-configuration-data* password is unset, the *communication certificate*
+can't be generated without it, and (on newer firmware) the *access control* defaults to a
+protected level needing a password. **The recipe differs by CPU family/firmware — there is
+no single universal form.** Fix, in order:
 
-**(1) Confidential-data password → also auto-generates the certificate** (clears 2 of 3):
+**(1) Confidential-data password → also auto-generates the certificate** (common to both
+families):
 
 ```
 # find the CPU device-item handle:
@@ -37,20 +40,38 @@ tia_obj_service  { handle:<cpu>, type:"Siemens.Engineering.HW.Features.PlcMaster
 tia_obj_invoke   { handle:<svc>, name:"Protect", args:["<password>"] }
 ```
 
-**(2) Access level → FullAccess** (clears the 3rd; the legacy model on FW < 3.1):
+**(2) Clear the access-control error — pick the variant for the CPU's family/firmware:**
 
-```
-tia_obj_set_attributes { handle:<cpu>, attributes:{ "PlcProtectionAccessLevel":"FullAccess" } }
-```
+- **S7-1500 V2.9** (verified 2026 on real hardware — a 1516-3 V2.9, 3 errors → 0): set
+  `PlcProtectionAccessLevel = "FullAccess"` **on the CPU device item**:
 
-Then `tia_compile` → `state: Warning, errors: 0` (the 2 warnings — CPU-display password —
-are benign and do **not** block; Gd8).
+  ```
+  tia_obj_set_attributes { handle:<cpu>, attributes:{ "PlcProtectionAccessLevel":"FullAccess" } }
+  ```
 
-> **CORRECTION for V21:** the older recipe `PlcAccessControlConfiguration="Disabled"` returns
-> **HTTP 500** on V21 (that attribute is not on the CPU item). Use `PlcProtectionAccessLevel`.
->
-> **Requires the `tia_obj_service` tool** (acquire `GetService<T>` → handle). Without it the
-> MCP cannot run step 1.
+- **S7-1200 V4.7** (new security model, FW ≳ V4.5; per `docs/HARNESS-KNOWLEDGE.md` §2,
+  runtime-observed): set `PlcAccessControlConfiguration = "Disabled"` on the
+  **`PlcAccessControlConfigurationProvider`** SERVICE — not a direct attribute on the CPU
+  item:
+
+  ```
+  tia_obj_service        { handle:<cpu>, type:"Siemens.Engineering.HW.Features.PlcAccessControlConfigurationProvider" }  -> <svc2>
+  tia_obj_set_attributes { handle:<svc2>, attributes:{ "PlcAccessControlConfiguration":"Disabled" } }
+  ```
+
+  ⚠️ **The two variants are mutually exclusive — the wrong one returns HTTP 500 on the
+  other family:** `PlcAccessControlConfiguration` isn't on a 1500's CPU item, and
+  `PlcProtectionAccessLevel` isn't the right model on a 1200 V4.7 item. Detect the
+  family/FW — or the compile-error signature — before picking a variant.
+
+- **S7-1200 V4.0** (old security model): nothing to do here — the same bare-CPU condition
+  is only a **WARNING**, not an error; a plain `tia_compile` already returns `errors: 0`.
+
+Then `tia_compile` → `state: Warning, errors: 0` (any remaining warnings — e.g. CPU-display
+password — are benign and do **not** block; Gd8).
+
+> **Requires the `tia_obj_service` tool** (acquire `GetService<T>` → handle) for step 1 and
+> for the S7-1200 V4.7 variant of step 2. Without it the MCP cannot run either.
 
 ### Open policy — who supplies the confidential password
 
@@ -113,17 +134,19 @@ Lets an external client (e.g. a Node backend) read/write the CPU over **Modbus T
    register drives the output.
 
 > **Instance-DB gotcha (the big one):** when you regenerate the FB via `tia_source_put`, the
-> existing **instance DB goes inconsistent** (its interface no longer matches the FB). The fix that
-> works is **delete + recreate** the instance DB, then recompile:
+> existing **instance DB** can go inconsistent (its interface no longer matches the FB).
+> **Recompile first** — a software-scope `tia_compile` regenerates the instance DB in most cases.
+> Only if it still reports inconsistent after a compile (typical when the interface was edited via
+> source), delete + recreate it, then recompile:
 >
 > ```
-> tia_block_delete    { ... the stale instance DB ... }
-> tia_instancedb_create { ... fresh instance DB for the FB ... }
-> tia_compile         { ... }
+> tia_compile            { ... }                            # try first
+> tia_block_delete       { ... the stale instance DB ... }   # only if still inconsistent
+> tia_instancedb_create  { ... fresh instance DB for the FB ... }
+> tia_compile            { ... }
 > ```
 >
-> (This differs from the §Pipeline note about *recompiling* a system-regenerated instance DB:
-> here the FB interface was **edited** via source, so recreate beats recompile.)
+> (Matches the §Pipeline note: recompile first, delete+recreate only as the fallback.)
 
 ## Recipe — enable **S7 / PUT-GET** on the S7-1200 (port 102)
 
@@ -146,8 +169,8 @@ most gated — most of it is **human GUI steps**, not Openness.
 an older FW, bump it in-place first (see *bump the project firmware in-place* above —
 `ChangeType` to `.../V4.4`).
 
-Then, the GUI gate sequence (all **human**, none exposed by Openness on this CPU/FW — we tried
-`CommunicationManagement` and `OpcUaUserManagement→404`):
+Then the setup sequence. **Step 1 is scriptable; steps 2–3 are human/GUI** on this CPU/FW (for those two
+we tried `CommunicationManagement` and `OpcUaUserManagement→404`):
 
 1. **Activate the OPC UA server** — *Properties → OPC UA → Server* (enable). *(This step **is**
    scriptable via Openness: `tia_obj_set_attributes` `{OpcUaServer:true}` on the "OPC UA"
@@ -160,9 +183,10 @@ Then, the GUI gate sequence (all **human**, none exposed by Openness on this CPU
 **Finding the node IDs (client side):** browse `ns=3;s=ServerInterfaces` with any OPC UA client;
 the actual data nodes show up under **`ns=4`**. Use those node IDs from the backend.
 
-> What Openness *can* still do here: create the DB/blocks, compile, download. Only the four gate
-> items above (activate server, license, create server interface — and PUT/GET in the S7 recipe)
-> are human/GUI. See `docs/TIA-Openness-Casos-de-Uso.md` §8c for the full "GUI-only gates" table.
+> What Openness *can* still do here: create the DB/blocks, compile, download — **and activate the OPC UA
+> server** (step 1: `tia_obj_set_attributes {OpcUaServer:true}`; do NOT gate it on a human). Only **three**
+> items are truly human/GUI: the **runtime license**, the **server interface** — and **PUT/GET** in the S7
+> recipe. See `docs/TIA-Openness-Casos-de-Uso.md` §8c for the full "GUI-only gates" table.
 
 ## Where to stop
 
