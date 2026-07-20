@@ -1,64 +1,64 @@
-# Instalar e usar o MCP `tia` (qualquer cliente)
+# Install and use the `tia` MCP (any client)
 
-> **Fonte única.** Este é o guia canônico de instalação. Os READMEs apontam para cá — não duplique
-> os passos em outro lugar (evita _drift_). Atualize **só aqui**.
+> **Single source.** This is the canonical install guide. The READMEs point here — do not duplicate
+> the steps anywhere else (avoids drift). Update **only here**.
 
-O **MCP `tia`** é um pacote **npm** (`@renanlido/tia-openness-mcp`) — um **cliente HTTP fino** que fala
-com a **API `serve`** (o app Windows que dirige o TIA Portal). Você **não instala nada**: o cliente roda
-o pacote via `npx`. Só existe **uma** coisa a configurar: a variável **`TIA_API_BASE`**, apontando para o
-`serve`.
+The **`tia` MCP** is an **npm** package (`@renanlido/tia-openness-mcp`) — a **thin HTTP client** that talks
+to the **`serve` API** (the Windows app that drives TIA Portal). You **install nothing**: the client runs
+the package via `npx`. There is only **one** thing to configure: the **`TIA_API_BASE`** variable, pointing
+at the `serve`.
 
 ```
-[ seu editor/CLI com IA ]  --(MCP/stdio)-->  [ tia MCP (npx) ]  --(HTTP)-->  [ serve (Windows+TIA) ]
+[ your AI editor/CLI ]  --(MCP/stdio)-->  [ tia MCP (npx) ]  --(HTTP)-->  [ serve (Windows+TIA) ]
 ```
 
-## Pré-requisito (uma vez, no host com TIA)
+## Prerequisite (once, on the host with TIA)
 
-Suba a API `serve` na máquina Windows que tem o TIA Portal V21 — pela **GUI de bandeja** (atalho
-"TIA Openness API" → aba "API" → "Iniciar API") **ou** por linha de comando:
+Start the `serve` API on the Windows machine that has TIA Portal V21 — via the **tray GUI**
+("TIA Openness API" shortcut → "API" tab → "Start API") **or** from the command line:
 
 ```powershell
 TIAOpenness.exe serve 5000              # local
-TIAOpenness.exe serve 5000 --host 0.0.0.0   # aceita conexões de outra máquina (ex.: Mac → VM)
+TIAOpenness.exe serve 5000 --host 0.0.0.0   # accepts connections from another machine (e.g. Mac → VM)
 ```
 
-- **Mesma máquina** que o editor de IA → `TIA_API_BASE=http://localhost:5000`.
-- **Editor noutra máquina** (ex.: Mac, com o `serve` numa VM Windows) → `TIA_API_BASE=http://<ip-da-vm>:5000`
-  e suba o serve com `--host 0.0.0.0` (e libere a porta no firewall).
+- **Same machine** as the AI editor → `TIA_API_BASE=http://localhost:5000`.
+- **Editor on another machine** (e.g. a Mac, with the `serve` on a Windows VM) → `TIA_API_BASE=http://<vm-ip>:5000`
+  and start the serve with `--host 0.0.0.0` (and open the port in the firewall).
 
-> O MCP **não envia chave** — quem ativa o servidor é a **licença** configurada no host (aba "Licença" da
-> GUI). Sem o serve ativado, o MCP só consegue diagnosticar conectividade (`tia_ping`).
+> The MCP **sends no key** — what activates the server is the **license** configured on the host (the GUI's
+> "License" tab). Without an activated serve, the MCP can only diagnose connectivity (`tia_ping`).
 
 ---
 
 ## ⚠️ Windows: use `cmd /c npx`
 
-No **Windows**, vários clientes lançam o processo **sem shell**, e o `npx` (que é `npx.cmd`) falha com
-`spawn npx ENOENT`. Onde isso acontecer, troque:
+On **Windows**, several clients launch the process **without a shell**, and `npx` (which is `npx.cmd`) fails with
+`spawn npx ENOENT`. Wherever that happens, replace:
 
 ```jsonc
 "command": "npx", "args": ["-y", "@renanlido/tia-openness-mcp"]
 ```
 
-por:
+with:
 
 ```jsonc
 "command": "cmd", "args": ["/c", "npx", "-y", "@renanlido/tia-openness-mcp"]
 ```
 
-No **macOS/Linux** use a forma simples (`npx` direto) — **não** ponha `cmd /c` lá.
+On **macOS/Linux** use the simple form (`npx` directly) — do **not** put `cmd /c` there.
 
 ---
 
 ## Claude Code
 
-**Um comando** (escopo de usuário — vale pra todos os projetos):
+**One command** (user scope — applies to all projects):
 
 ```bash
 claude mcp add --scope user --env TIA_API_BASE=http://localhost:5000 tia -- npx -y @renanlido/tia-openness-mcp
 ```
 
-Ou por **`.mcp.json`** na raiz do projeto (escopo de projeto, versionável):
+Or via **`.mcp.json`** at the project root (project scope, versionable):
 
 ```json
 {
@@ -72,11 +72,11 @@ Ou por **`.mcp.json`** na raiz do projeto (escopo de projeto, versionável):
 }
 ```
 
-Confira: `claude mcp list` (deve listar `tia`) · numa sessão, `/mcp`.
+Check: `claude mcp list` (should list `tia`) · in a session, `/mcp`.
 
 ## Claude Desktop
 
-Edite o `claude_desktop_config.json` (Settings → Developer → **Edit Config** abre o arquivo):
+Edit `claude_desktop_config.json` (Settings → Developer → **Edit Config** opens the file):
 
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
@@ -93,12 +93,12 @@ Edite o `claude_desktop_config.json` (Settings → Developer → **Edit Config**
 }
 ```
 
-No **Windows** use a forma `cmd /c` (acima) — é a causa nº 1 de "servidor não inicia". Reinicie o app.
+On **Windows** use the `cmd /c` form (above) — it is the #1 cause of "the server won't start". Restart the app.
 
-## Codex (CLI + extensão de IDE)
+## Codex (CLI + IDE extension)
 
-Config em `~/.codex/config.toml` (a extensão de IDE compartilha o mesmo arquivo). Note: **env num
-sub-bloco** `[mcp_servers.tia.env]`.
+Config in `~/.codex/config.toml` (the IDE extension shares the same file). Note: **env in a
+sub-block** `[mcp_servers.tia.env]`.
 
 ```toml
 [mcp_servers.tia]
@@ -109,17 +109,17 @@ args = ["-y", "@renanlido/tia-openness-mcp"]
 TIA_API_BASE = "http://localhost:5000"
 ```
 
-Ou pela CLI:
+Or via the CLI:
 
 ```bash
 codex mcp add tia --env TIA_API_BASE=http://localhost:5000 -- npx -y @renanlido/tia-openness-mcp
 ```
 
-Confira numa sessão com `/mcp`. (No Windows, troque `npx` por `cmd /c npx` no `args`.)
+Check in a session with `/mcp`. (On Windows, replace `npx` with `cmd /c npx` in `args`.)
 
 ## Gemini CLI
 
-Config em `~/.gemini/settings.json` (usuário) ou `<projeto>/.gemini/settings.json` (projeto):
+Config in `~/.gemini/settings.json` (user) or `<project>/.gemini/settings.json` (project):
 
 ```json
 {
@@ -133,7 +133,7 @@ Config em `~/.gemini/settings.json` (usuário) ou `<projeto>/.gemini/settings.js
 }
 ```
 
-Ou pela CLI (`-s user` = global; default é projeto):
+Or via the CLI (`-s user` = global; default is project):
 
 ```bash
 gemini mcp add -s user -e TIA_API_BASE=http://localhost:5000 tia npx -y @renanlido/tia-openness-mcp
@@ -141,7 +141,7 @@ gemini mcp add -s user -e TIA_API_BASE=http://localhost:5000 tia npx -y @renanli
 
 ## Cursor
 
-`.cursor/mcp.json` (projeto) ou `~/.cursor/mcp.json` (global) — mesmo formato do Claude (`mcpServers`):
+`.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) — same format as Claude (`mcpServers`):
 
 ```json
 {
@@ -157,8 +157,8 @@ gemini mcp add -s user -e TIA_API_BASE=http://localhost:5000 tia npx -y @renanli
 
 ## VS Code (Copilot / agent mode)
 
-⚠️ **Diferente dos outros:** a chave raiz é **`servers`** (não `mcpServers`) e use **`"type": "stdio"`**.
-Arquivo `.vscode/mcp.json` (workspace) — ou Command Palette → `MCP: Open User Configuration`:
+⚠️ **Different from the others:** the root key is **`servers`** (not `mcpServers`) and use **`"type": "stdio"`**.
+File `.vscode/mcp.json` (workspace) — or Command Palette → `MCP: Open User Configuration`:
 
 ```json
 {
@@ -173,11 +173,11 @@ Arquivo `.vscode/mcp.json` (workspace) — ou Command Palette → `MCP: Open Use
 }
 ```
 
-As tools só aparecem no Copilot em **Agent mode**. CLI alternativa: `code --add-mcp "{...}"`.
+Tools only show up in Copilot in **Agent mode**. CLI alternative: `code --add-mcp "{...}"`.
 
 ## Windsurf
 
-Arquivo `~/.codeium/windsurf/mcp_config.json` (sem escopo de projeto), formato `mcpServers`:
+File `~/.codeium/windsurf/mcp_config.json` (no project scope), `mcpServers` format:
 
 ```json
 {
@@ -193,46 +193,46 @@ Arquivo `~/.codeium/windsurf/mcp_config.json` (sem escopo de projeto), formato `
 
 ---
 
-## Resumo das diferenças (o que pega)
+## Differences summary (what bites)
 
-| Cliente | Arquivo | Chave raiz | `type:"stdio"`? | CLI p/ adicionar |
+| Client | File | Root key | `type:"stdio"`? | CLI to add |
 |---|---|---|---|---|
-| Claude Code | `.mcp.json` (projeto) / `~/.claude.json` (user, via CLI) | `mcpServers` | opcional | `claude mcp add … -- npx …` |
-| Claude Desktop | `claude_desktop_config.json` (mac `~/Library/Application Support/Claude/`, win `%APPDATA%\Claude\`) | `mcpServers` | opcional | — (edita JSON) |
+| Claude Code | `.mcp.json` (project) / `~/.claude.json` (user, via CLI) | `mcpServers` | optional | `claude mcp add … -- npx …` |
+| Claude Desktop | `claude_desktop_config.json` (mac `~/Library/Application Support/Claude/`, win `%APPDATA%\Claude\`) | `mcpServers` | optional | — (edit JSON) |
 | Codex | `~/.codex/config.toml` | `[mcp_servers.tia]` (TOML) | — | `codex mcp add …` |
 | Gemini CLI | `~/.gemini/settings.json` | `mcpServers` | — | `gemini mcp add …` |
 | Cursor | `.cursor/mcp.json` / `~/.cursor/mcp.json` | `mcpServers` | — | — (JSON/UI) |
-| **VS Code** | `.vscode/mcp.json` | **`servers`** | **sim** | `code --add-mcp "{…}"` |
+| **VS Code** | `.vscode/mcp.json` | **`servers`** | **yes** | `code --add-mcp "{…}"` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` | `mcpServers` | — | — (JSON/UI) |
 
-**Regras de ouro:** (1) no **Windows**, `cmd /c npx`; (2) no **VS Code**, chave `servers` + `type:"stdio"`;
-(3) defina **`TIA_API_BASE`** apontando pro `serve`; (4) reinicie o cliente após editar o arquivo.
+**Golden rules:** (1) on **Windows**, `cmd /c npx`; (2) in **VS Code**, root key `servers` + `type:"stdio"`;
+(3) set **`TIA_API_BASE`** pointing at the `serve`; (4) restart the client after editing the file.
 
-## Acesso remoto (outra máquina → o host do serve)
+## Remote access (another machine → the serve host)
 
-Por padrão o serve escuta só em **localhost** (seguro, nada exposto). Para alcançá-lo de **outra máquina**
-(ex.: o MCP no seu **Mac** → o serve numa **VM Windows**), o Windows precisa de uma **reserva HTTP.sys**
-(`urlacl`) + a **porta liberada no firewall** — senão o bind em `0.0.0.0`/`+` falha com *Acesso negado*.
+By default the serve listens only on **localhost** (safe, nothing exposed). To reach it from **another machine**
+(e.g. the MCP on your **Mac** → the serve on a **Windows VM**), Windows needs an **HTTP.sys reservation**
+(`urlacl`) + the **port opened in the firewall** — otherwise binding to `0.0.0.0`/`+` fails with *Access denied*.
 
-**Pela GUI (1 clique — recomendado):** aba **"API"** → botão **"Permitir acesso remoto…"** → confirme o
-**UAC** (admin) e, opcionalmente, **restrinja ao IP de origem** (ex.: o IP do seu Mac). Depois ponha
-**Host = `0.0.0.0`** e **"Iniciar API"**. *(Se você tentar iniciar com Host remoto sem liberar, o app
-detecta o erro e já oferece liberar.)*
+**Via the GUI (1 click — recommended):** **"API"** tab → **"Allow remote access…"** button → confirm the
+**UAC** prompt (admin) and, optionally, **restrict to the source IP** (e.g. your Mac's IP). Then set
+**Host = `0.0.0.0`** and **"Start API"**. *(If you try to start with a remote Host without allowing it first,
+the app detects the error and offers to allow it right there.)*
 
-**Por linha de comando** (PowerShell **como administrador**):
+**From the command line** (PowerShell **as administrator**):
 
 ```powershell
-TIAOpenness.exe setup-remote 5000 --allow 192.168.68.230   # libera SÓ p/ esse IP de origem (recomendado)
-TIAOpenness.exe setup-remote 5000                          # libera p/ a LAN toda
-TIAOpenness.exe setup-remote 5000 --remove                 # desfaz (volta a só-localhost)
+TIAOpenness.exe setup-remote 5000 --allow 192.168.68.230   # allow ONLY that source IP (recommended)
+TIAOpenness.exe setup-remote 5000                          # allow the whole LAN
+TIAOpenness.exe setup-remote 5000 --remove                 # undo (back to localhost-only)
 ```
 
-> **Segurança:** liberar acesso remoto expõe o serve à rede. O serve continua exigindo **licença ativa**,
-> mas **não autentica clientes individuais** — quem pode conectar é controlado por **firewall/VPN**. Prefira
-> **restringir ao IP** de origem; só libere a LAN toda em rede confiável. No Mac, aponte
-> `TIA_API_BASE=http://<ip-da-vm>:5000`.
+> **Security:** allowing remote access exposes the serve to the network. The serve still requires an **active
+> license**, but it does **not authenticate individual clients** — who can connect is controlled by
+> **firewall/VPN**. Prefer **restricting to the source IP**; only open the whole LAN on a trusted network. On
+> the Mac, point `TIA_API_BASE=http://<vm-ip>:5000`.
 
-## Diagnóstico
+## Diagnostics
 
-A primeira tool a chamar é **`tia_ping`**: `reachable:false` → IP/porta/firewall/serve desligado;
-`activated:false` → licença ausente/inválida no host; ambos `true` → pronto pra usar.
+The first tool to call is **`tia_ping`**: `reachable:false` → IP/port/firewall/serve down;
+`activated:false` → license missing/invalid on the host; both `true` → ready to use.

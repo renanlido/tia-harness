@@ -52,6 +52,7 @@ Optional env overrides (defaults are built into the MCP, so you usually set none
 | `tia.scaffold` | build a project from a spec (devices → network → tags → blocks → compile) | yes |
 | `tia.verify` | the verification ladder (compile / consistency / export) | yes |
 | `tia.handoff` | prepare the human-approval envelope for the download / online / safety gates | yes (gate) |
+| `tia.init` | inject the harness operating guide into the project's `CLAUDE.md` (idempotent markers) | no — file-only |
 
 ## Subagents
 
