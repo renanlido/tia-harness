@@ -1,6 +1,6 @@
-> **Nota:** O bloco entre os markers `tia-harness` abaixo é GERADO de `mcp/content/`
-> (rode `cd mcp && npm run sync`) — não edite o miolo à mão. Este cabeçalho (fora dos
-> markers) é específico do port Codex e é editado normalmente.
+> **Note:** The block between the `tia-harness` markers below is GENERATED from `mcp/content/`
+> (run `cd mcp && npm run sync`) — do not hand-edit its body. This header (outside the
+> markers) is specific to the Codex port and is edited normally.
 
 # Working with the TIA Portal Automation Harness (Codex)
 
