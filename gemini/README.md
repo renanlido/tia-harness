@@ -21,7 +21,7 @@ gemini/
 │  ├─ hardware-architect.md          # CPU / modules / network
 │  ├─ verifier.md                    # verification ladder (rungs 0-3)
 │  └─ safety-reviewer.md             # READ-ONLY F review (nothing autonomous)
-└─ commands/                         # the 8 skills, ported to Gemini custom commands (TOML)
+└─ commands/                         # the 9 skills, ported to Gemini custom commands (TOML)
    ├─ spec-validate.toml             # /spec-validate
    ├─ cpu-select.toml                # /cpu-select
    ├─ spec-plan.toml                 # /spec-plan
@@ -29,7 +29,8 @@ gemini/
    ├─ tia-scaffold.toml              # /tia-scaffold
    ├─ tia-verify.toml                # /tia-verify
    ├─ tia-handoff.toml               # /tia-handoff
-   └─ tia-init.toml                  # /tia-init
+   ├─ tia-init.toml                  # /tia-init
+   └─ tia-backup.toml                # /tia-backup
 ```
 
 ## Install
@@ -79,10 +80,10 @@ Maps **1:1** from the Claude Code plugin (same technical content):
 What **differs** (the key one):
 
 - **Skills become commands, and there is NO auto-trigger.** Gemini CLI has no skill auto-invocation,
-  so each of the 8 skills is ported to a **custom command** in `commands/<name>.toml` (keys:
+  so each of the 9 skills is ported to a **custom command** in `commands/<name>.toml` (keys:
   `description`, `prompt`; `{{args}}` for the spec/input). You **invoke them explicitly** by slash
   command (`/spec-validate`, `/cpu-select`, `/spec-plan`, `/tia-review`, `/tia-scaffold`,
-  `/tia-verify`, `/tia-handoff`, `/tia-init`) instead of the model picking a skill from its
+  `/tia-verify`, `/tia-handoff`, `/tia-init`, `/tia-backup`) instead of the model picking a skill from its
   `description`. The "USE when / do NOT use" guidance from each skill's frontmatter is preserved in
   the command `description` and prompt, but it informs **you** when to invoke, not an auto-router.
 - Command file names use **hyphens** (`spec-validate.toml`) where Claude skills used dots
@@ -96,7 +97,8 @@ What **differs** (the key one):
 ## Reminder — gates, guards, serial-only
 
 The harness encodes **gates** (human-only: trust dialog G1, download/CPU-STOP G3, go-online G4,
-network scan G7, master-secret G6, safety/F G5 — never autonomous) and **guards** (tool-enforced:
+network scan G7, credentials G6 (master secret, UMAC, upload / block / certificate passwords,
+password policy), safety/F G5 — never autonomous) and **guards** (tool-enforced:
 compile-clean before deploy, dry-run→approve, idempotency by name, `OrderNumber:<MLFB>/V<fw>`,
 **serial-only**). The `serve` backend is a **single serial worker** — never parallelize `tia_*`
 calls. See [`GEMINI.md`](GEMINI.md) for the full gates/guards model, the GUI-gate handoff table, and

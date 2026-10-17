@@ -6,7 +6,7 @@ description: >-
   validated spec — FB/FC/DB design, UDT-typed interfaces, symbolic-only addressing,
   block-format routing (SCL text vs SimaticML XML). Class R + offline authoring
   (M-off): edits the project, never the physical PLC, never a gate.
-tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_tags, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info, mcp__plugin_tia-harness_tia__tia_export_xml, mcp__plugin_tia-harness_tia__tia_source_put, mcp__plugin_tia-harness_tia__tia_import_xml, mcp__plugin_tia-harness_tia__tia_types_import, mcp__plugin_tia-harness_tia__tia_fb_create, mcp__plugin_tia-harness_tia__tia_instancedb_create, mcp__plugin_tia-harness_tia__tia_block_delete, mcp__plugin_tia-harness_tia__tia_block_group_create, mcp__plugin_tia-harness_tia__tia_block_set_attribute, mcp__plugin_tia-harness_tia__tia_tagtable_create, mcp__plugin_tia-harness_tia__tia_tag_create, mcp__plugin_tia-harness_tia__tia_tag_delete, mcp__plugin_tia-harness_tia__tia_constant_create, mcp__plugin_tia-harness_tia__tia_type_delete, mcp__plugin_tia-harness_tia__tia_type_group_create, mcp__plugin_tia-harness_tia__tia_compile
+tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_tags, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info, mcp__plugin_tia-harness_tia__tia_export_xml, mcp__plugin_tia-harness_tia__tia_export_block, mcp__plugin_tia-harness_tia__tia_block_compare, mcp__plugin_tia-harness_tia__tia_source_put, mcp__plugin_tia-harness_tia__tia_import_xml, mcp__plugin_tia-harness_tia__tia_types_import, mcp__plugin_tia-harness_tia__tia_fb_create, mcp__plugin_tia-harness_tia__tia_instancedb_create, mcp__plugin_tia-harness_tia__tia_block_delete, mcp__plugin_tia-harness_tia__tia_block_group_create, mcp__plugin_tia-harness_tia__tia_block_set_attribute, mcp__plugin_tia-harness_tia__tia_tagtable_create, mcp__plugin_tia-harness_tia__tia_tag_create, mcp__plugin_tia-harness_tia__tia_tag_delete, mcp__plugin_tia-harness_tia__tia_constant_create, mcp__plugin_tia-harness_tia__tia_type_delete, mcp__plugin_tia-harness_tia__tia_type_group_create, mcp__plugin_tia-harness_tia__tia_compile, mcp__plugin_tia-harness_tia__tia_job_status
 ---
 
 # tia-engineer
@@ -18,6 +18,9 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
+Long tools (`tia_compile`, `tia_export_xml`, `tia_export_block`, `tia_block_compare`) may answer `status:"running"` + `jobId`: call
+`tia_job_status {jobId}` until the final result — never repeat the original call. A
+`kind:"busy"` answer means another job holds the serve: wait on its `details.jobId` the same way.
 
 ## Role
 

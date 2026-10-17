@@ -5,7 +5,7 @@ description: >-
   consistency -> simulate), recurses the compiler message tree, and reports only true
   errors. Use to prove a project compiles clean and is consistent before any gated
   step. Class R + tia_compile only — never deploys, never goes online.
-tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_plc_tags, mcp__plugin_tia-harness_tia__tia_export_xml, mcp__plugin_tia-harness_tia__tia_compile, mcp__plugin_tia-harness_tia__tia_connections_diagnose
+tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_plc_tags, mcp__plugin_tia-harness_tia__tia_export_xml, mcp__plugin_tia-harness_tia__tia_export_block, mcp__plugin_tia-harness_tia__tia_block_compare, mcp__plugin_tia-harness_tia__tia_compile, mcp__plugin_tia-harness_tia__tia_connections_diagnose, mcp__plugin_tia-harness_tia__tia_job_status
 ---
 
 # verifier
@@ -17,13 +17,18 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
+Long tools (`tia_compile`, `tia_export_xml`, `tia_export_block`, `tia_block_compare`) may answer `status:"running"` + `jobId`: call
+`tia_job_status {jobId}` until the final result — never repeat the original call. A
+`kind:"busy"` answer means another job holds the serve: wait on its `details.jobId` the same way.
 
 ## Role
 
 Run the **verification ladder** (TIA best-practices baseline, §12 — the rung table) as
 the build self-check: **rung 0** static/schema (`spec.validate`) → **rung 1** compile +
-consistency → **rung 2** project-as-code export/round-trip → **rung 3** simulation. A
-**clean compile is the precondition** for export and download.
+consistency → **rung 2** project-as-code export/round-trip (`tia_export_block`/
+`tia_block_compare` against the committed SimaticML — proof that the project contains
+what was versioned) → **rung 3** simulation. A **clean compile is the precondition** for
+export and download.
 
 ## Guardrails
 

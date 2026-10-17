@@ -53,7 +53,9 @@ work even before the MCP / `serve` are up.
 │  │  └─ SKILL.md  RECIPES.md
 │  ├─ tia.verify/                  # verification ladder: compile/consistency/export (class M-off)
 │  │  └─ SKILL.md
-│  └─ tia.handoff/                 # prepare the gate envelope: download/online/safety (class GATE)
+│  ├─ tia.handoff/                 # prepare the gate envelope: download/online/safety (class GATE)
+│  │  └─ SKILL.md
+│  └─ tia.backup/                  # read a physical CPU into a .zap21 archive (M-off up to G4)
 │     └─ SKILL.md
 └─ agents/                         # subagent stubs (role + guardrails + when-to-use)
    ├─ tia-engineer.md              # offline program authoring
@@ -73,7 +75,8 @@ The harness skills split by what they need:
   - **`tia.review`** — read-only audit of an **open** project (uses only `tia` *read* tools).
 - **Class M-off / GATE — drive the `tia` MCP M3/M4/M5 tools.**
   - **`tia.scaffold`** (create-from-spec pipeline + the verified bare-CPU protection recipe),
-    **`tia.verify`** (verification ladder), **`tia.handoff`** (prepare the download/online/safety gates).
+    **`tia.verify`** (verification ladder), **`tia.handoff`** (prepare the download/online/safety gates),
+    **`tia.backup`** (back up a physical CPU into a `.zap21` archive).
 
 The **`tia` MCP now ships M1–M5** (read · lifecycle+G1 · offline creation+guards ·
 compile/deploy gated G3–G7 · project-spec validate/plan/apply+G5) and is **runtime-validated**
@@ -118,7 +121,8 @@ memory:
 
 - **Gates (the harness prepares, a human acts):** first-connect trust dialog (G1);
   download / CPU-STOP approval (G3); go-online / network scan (G4/G7);
-  master-secret/UMAC (G6); **safety/F author/modify/download (G5) — never autonomous**.
+  credentials (G6: master secret, UMAC, upload / block / certificate passwords, password
+  policy); **safety/F author/modify/download (G5) — never autonomous**.
 - **Guards (deterministic):** compile-clean before deploy; consistency; dry-run /
   plan-then-apply; backup-before-mutate; idempotency by **name**; `typeIdentifier =
   OrderNumber:<MLFB>/V<fw>` (slash, not `:V`); block-format routing (SCL↔XML, UDTs
@@ -164,8 +168,9 @@ backends/apps under [../comm-scenarios/](../comm-scenarios/) (`modbus/`, `s7/`, 
 
 ## Status
 
-All **7 skills** are specified: `spec.validate`, `cpu.select`, `spec.plan`, `tia.review`
-(class R) + `tia.scaffold`, `tia.verify`, `tia.handoff` (M-off / GATE), plus the 4 subagents.
+All **9 skills** are specified: `spec.validate`, `cpu.select`, `spec.plan`, `tia.review`
+(class R) + `tia.scaffold`, `tia.verify`, `tia.handoff` (M-off / GATE) + `tia.backup` (backup to
+`.zap21`, M-off up to G4) + `tia.init` (guide injector, class R), plus the 4 subagents.
 The MCP-backed skills run against the **`tia` MCP M1–M5** (complete + runtime-validated). The
 bare-CPU **protection recipe** in `tia.scaffold/RECIPES.md` is the *real, verified* sequence
 (`PlcMasterSecretConfigurator.Protect` + `PlcProtectionAccessLevel=FullAccess`), not a

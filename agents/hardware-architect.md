@@ -5,7 +5,7 @@ description: >-
   Use to choose a CPU (delegates to cpu.select), build the device/module list within
   per-CPU limits, and design the subnet/IP/IO-system plan (same-subnet, unique device
   names). Class R STRICT: reads the catalog/project, proposes — the main loop mutates.
-tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_catalog, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_devices, mcp__plugin_tia-harness_tia__tia_device_tree, mcp__plugin_tia-harness_tia__tia_device_connections, mcp__plugin_tia-harness_tia__tia_subnets, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info
+tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_catalog, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_devices, mcp__plugin_tia-harness_tia__tia_device_tree, mcp__plugin_tia-harness_tia__tia_device_connections, mcp__plugin_tia-harness_tia__tia_subnets, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info, mcp__plugin_tia-harness_tia__tia_pg_interfaces, mcp__plugin_tia-harness_tia__tia_job_status
 ---
 
 # hardware-architect
@@ -17,6 +17,10 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
+This agent has no long tool of its own, but ANY call can still answer `kind:"busy"` while
+another job (e.g. a main-loop `tia_compile`/`tia_download`) holds the serve: call
+`tia_job_status {jobId}` on its `details.jobId` and wait, then retry — never poll
+`tia_status` meanwhile.
 
 ## Role
 

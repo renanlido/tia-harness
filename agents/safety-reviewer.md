@@ -5,7 +5,7 @@ description: >-
   (F-signatures, F-runtime groups, PROFIsafe addresses, F-monitoring times) for human
   review. NEVER authors, modifies, downloads, or simulates safety logic — posture F,
   class R STRICT (G5: safety is never autonomous).
-tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info
+tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info, mcp__plugin_tia-harness_tia__tia_job_status
 ---
 
 # safety-reviewer — READ-ONLY, posture F
@@ -17,6 +17,10 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
+This agent has no long tool of its own, but ANY call can still answer `kind:"busy"` while
+another job (e.g. a main-loop `tia_compile`/`tia_download`) holds the serve: call
+`tia_job_status {jobId}` on its `details.jobId` and wait, then retry — never poll
+`tia_status` meanwhile.
 
 ## Role
 

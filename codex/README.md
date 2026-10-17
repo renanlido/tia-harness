@@ -29,7 +29,8 @@ codex/
    ├─ tia.scaffold/    SKILL.md  RECIPES.md
    ├─ tia.verify/      SKILL.md
    ├─ tia.handoff/     SKILL.md
-   └─ tia.init/        SKILL.md
+   ├─ tia.init/        SKILL.md
+   └─ tia.backup/      SKILL.md
 ```
 
 ## Install
@@ -72,7 +73,7 @@ Maps **1:1** from the Claude Code plugin (same technical content):
   their role/guardrails/when-to-use. The Markdown frontmatter becomes Codex **TOML** keys: `name`,
   `description`, and `developer_instructions` (the multiline system prompt). Optional `model` /
   `mcp_servers` keys are available but unused by default.
-- **Skills** — the 8 skills carry over as `SKILL.md` with YAML frontmatter, plus every auxiliary
+- **Skills** — the 9 skills carry over as `SKILL.md` with YAML frontmatter, plus every auxiliary
   file (`RULES.md`, `RECIPES.md`, `CPU-TABLE.md`, `BASELINE.md`, `examples/`) copied verbatim. The
   gates/guards, the `tia_*` tool names, and the verified bare-CPU recipe are preserved as-is.
 - **Operating guide** — `CLAUDE.md` → `AGENTS.md`, same gates-vs-guards model, GUI-gate table, and
@@ -92,7 +93,8 @@ What **differs** (format only):
 ## Reminder — gates, guards, serial-only
 
 The harness encodes **gates** (human-only: trust dialog G1, download/CPU-STOP G3, go-online G4,
-network scan G7, master-secret G6, safety/F G5 — never autonomous) and **guards** (tool-enforced:
+network scan G7, credentials G6 (master secret, UMAC, upload / block / certificate passwords,
+password policy), safety/F G5 — never autonomous) and **guards** (tool-enforced:
 compile-clean before deploy, dry-run→approve, idempotency by name, `OrderNumber:<MLFB>/V<fw>`,
 **serial-only**). The `serve` backend is a **single serial worker** — never parallelize `tia_*`
 calls. See [`AGENTS.md`](AGENTS.md) for the full gates/guards model, the GUI-gate handoff table, and
