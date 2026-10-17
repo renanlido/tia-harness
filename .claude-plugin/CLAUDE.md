@@ -228,7 +228,9 @@ path ON THE SERVE HOST.
   picks no single open USER library is refused, nothing saved or closed: `404 not_found`
   (`details.userLibraries` lists the names that work), or `409 conflict` for a read-only
   system/corporate library or a name several user libraries match only ignoring case; up to
-  1.6.3 the serve reports success even for an unknown name.
+  1.6.3 the serve reports success even for an unknown name. A library opened read-only
+  (`readWrite:false`) cannot be saved: `409 conflict` (`details.readOnly`) after app 1.6.3, a
+  500 up to 1.6.3 — close it and open it again with `readWrite:true` to change and save it.
 - **HMI:** `tia_hmis` and `tia_hmi_screens` read any HMI; screen files
   (`tia_hmi_screen_export`, `tia_hmi_screens_import`) work for WinCC **Classic** only, and the
   import OVERWRITES same-named screens.
