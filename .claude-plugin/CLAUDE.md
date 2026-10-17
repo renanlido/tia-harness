@@ -49,15 +49,18 @@ commissioner.
    `jobId` — the operation is STILL running on serve. Call `tia_job_status {jobId}`
    until it returns the final result; never repeat the original call. While a job runs,
    any OTHER ordinary serve-bound tool answers `kind:"busy"` (with `details.jobId`) — that is
-   expected, not a failure: go back to `tia_job_status`. Offline tools (`tia_guide`,
-   `tia_spec_validate`, `tia_spec_plan`, `tia_job_status` itself) never answer busy.
-   `tia_ping` is the diagnostic exception: it probes `/health`, which bypasses the busy guard,
-   and returns a reachability report (`reachable:true`, `activated:null` while a job runs) with
-   no top-level `kind` and no `details.jobId` — use it to check reachability, never to obtain the job ID.
+   expected, not a failure: go back to `tia_job_status`. `tia_ping` probes `/health`: never busy,
+   `activated:null` while a job runs, and no job ID in it — use it for reachability only. Offline
+   tools (`tia_guide`, `tia_spec_validate`, `tia_spec_plan`, `tia_job_status` itself) never answer busy.
 
 Session start: `tia_ping` → `tia_status` → (if needed) `tia_start` / `tia_connect`.
 Before the first build on a project: read `tia_guide {"topic":"pipeline"}` and
 `tia_guide {"topic":"gotchas"}`.
+
+**Tool names** are written bare (`tia_status`) here and in the skills. Claude Code shows them qualified:
+`mcp__plugin_tia-harness_tia__tia_status` (plugin; what a subagent `tools:` list needs) or
+`mcp__tia__tia_status` (standalone). Other clients may display them differently; the `tia_*` suffix
+is the tool.
 
 ---
 
@@ -73,8 +76,9 @@ Before the first build on a project: read `tia_guide {"topic":"pipeline"}` and
   and the **password-policy** values (`tia_password_policy_set`)), **safety / F-logic
   (G5) — never autonomous**.
 - **GUARDS (tool-enforced preconditions):** compile-clean before deploy, consistency,
-  dry-run→approve, idempotency by name, `OrderNumber:<MLFB>/V<fw>` format, serial-only.
-- Back up a physical CPU with the **`tia.backup`** skill (dedicated empty project; the upload
+  dry-run→approve, idempotency by name (advisory: re-runs do not converge), `OrderNumber:<MLFB>/V<fw>`
+  format, serial-only.
+- Back up a physical CPU with the **`tia-backup`** skill (dedicated empty project; the upload
   token is bound to the project shown in the handoff).
 - **Picking the G3 download path (no gate, no scan):** `tia_pg_interfaces` lists the connection
   modes/PG-PC interfaces TIA already sees for the CPU (plus the OS status of each adapter) —
@@ -83,10 +87,10 @@ Before the first build on a project: read `tia_guide {"topic":"pipeline"}` and
 - **GUI-ONLY settings (NOT exposed via Openness — surface as a human gate, do not script):**
   "Permit access with PUT/GET communication", OPC UA **runtime license** / server-interface
   creation. (OPC UA server **activation** is the exception — settable via Openness with
-  `tia_obj_set_attributes {OpcUaServer:true}` on the "OPC UA" device-item.)
+  `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}` on the "OPC UA" device-item.)
 
 **Deploy-time approval gates** (download / online / network-scan / secret / safety = **G3/G4/G7/G6/G5**)
-are a *different* class — see the **`tia.handoff`** skill. Those are "a human **approves an action**",
+are a *different* class — see the **`tia-handoff`** skill. Those are "a human **approves an action**",
 not "a human **clicks a GUI setting**". Both are human interaction points; surface them as
 `requires_human_action` with concrete guidance, never as a tool failure.
 
@@ -109,7 +113,7 @@ tell the human the **exact GUI steps**, and resume after they confirm. A GUI gat
 | **PUT/GET** | S7 client (`nodes7`/`snap7`) connects on port 102 but reads return access-denied (`ROSCTR=2` / "BAD") | *"Permit access with PUT/GET"* is a GUI-only protection setting | CPU → **Properties → Protection & Security → Connection mechanisms** → check **"Permit access with PUT/GET communication from remote partner"**. Compile + download (`hardware:true`). |
 | **FW-change reset** | After `tia_device_change_version`: OPC UA server off, the license error on compile, blocks `isConsistent:false` | `DeviceItem.ChangeType` **resets GUI-gated comm settings** (server activation + license); the interface & PUT/GET survive | `tia_project_archive` **before** the FW change. After: re-set `OpcUaServer:true` via `tia_obj_set_attributes` (scriptable), re-select the license (row above), recompile. |
 
-**Not a gate (now scriptable):** *activating* the OPC UA server — `tia_obj_set_attributes {OpcUaServer:true}`
+**Not a gate (now scriptable):** *activating* the OPC UA server — `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`
 on the "OPC UA" device-item (it auto-generates the server certificate). Only the **license** and the
 **server interface** stay GUI-only.
 
@@ -279,6 +283,12 @@ can't be generated without it, and (on newer firmware) the *access control* defa
 protected level needing a password. **The recipe differs by CPU family/firmware — there is
 no single universal form.** Fix, in order:
 
+**Tell the human first.** The recipe lowers the CPU's protection in the project: it sets the
+confidential-configuration password (typed by the human) and then either sets the access level
+to **Full access** (S7-1500) or turns access control **off** (S7-1200, FW V4.5+). The CPU runs
+with that protection after the next download. Name these changes when you ask for the password
+and list them in the report; the human may pick a stricter level in the TIA GUI before deploying.
+
 **(1) Confidential-data password → also auto-generates the certificate** (common to both
 families):
 
@@ -324,15 +334,13 @@ password — are benign and do **not** block; Gd8).
 > **Requires the `tia_obj_service` tool** (acquire `GetService<T>` → handle) for step 1 and
 > for the S7-1200 V4.7 variant of step 2. Without it the MCP cannot run either.
 
-### Open policy — who supplies the confidential password
+### Policy — who supplies the confidential password
 
-`Protect()` sets an **offline project** password (it is not the online master secret / G6).
-The repo docs treat it as offline authoring ("no human needed"), but it protects confidential
-config data — so this is a **harness policy decision**: either (a) the human/spec supplies it
-(`spec.security.confidentialPassword`), or (b) the harness uses a documented project default.
-Default to asking the human if the spec doesn't carry it; never invent a *secret the user
-must later know* silently. The online master secret (`tia_mastersecret_set`, G6) is **always**
-human-supplied.
+`Protect()` sets an **offline project** password (it is not the online master secret / G6), but
+it protects confidential configuration data, so **the human supplies it, every time** (the
+recommended policy, pending the product owner's confirmation): the project-spec has no field
+for it, and a skill never invents, defaults, stores or logs it. The online master secret (`tia_mastersecret_set`, G6) is **always**
+human-supplied too.
 
 ## S7 connection precondition (G2)
 
@@ -348,15 +356,14 @@ actually read from the CPU. `DeviceItem.ChangeType(typeIdentifier)` changes the 
 in place and **preserves the software** — it does **not** require delete/recreate.
 
 ```
-# find the CPU device-item handle:
-tia_obj_roots                                  -> the device handle (role:"device")
-tia_obj_items { handle:<device>, composition:"DeviceItems" }   -> the CPU item handle (not the rack)
-# change the CPU's type to the SAME MLFB with the target /V<fw> suffix:
-tia_obj_invoke { handle:<cpu>, name:"ChangeType",
-                 args:["OrderNumber:6ES7 214-1HG40-0XB0/V4.4"] }
+# archive first (see the warning below), then change the CPU's type to the SAME MLFB with the target /V<fw>:
+tia_device_change_version { plc:"<plc>", typeIdentifier:"OrderNumber:6ES7 214-1HG40-0XB0/V4.4" }
 # then recompile — a regenerated FB may need a fresh compile before download:
 tia_compile { ... }
 ```
+
+(`tia_device_change_version` runs `ChangeType` on the CPU item for you; the raw form, `tia_obj_invoke`
+with `name:"ChangeType"` on the CPU item handle from `tia_obj_roots` / `tia_obj_items`, does the same.)
 
 - **Rule: `project FW ≤ device FW`** — never set the project firmware **higher** than the physical
   device's (download would be rejected). Bumping the project *up to* the device FW is the safe move.
@@ -366,7 +373,7 @@ tia_compile { ... }
   the OPC UA server** (`OpcUaServer`→`false`) and **cleared the OPC UA runtime-license** selection
   (the custom server interface and PUT/GET *survived*). So **`tia_project_archive` first** on a CPU
   with hand-configured OPC UA/PUT-GET, and **re-verify after**. Recovery: `tia_obj_set_attributes
-  {OpcUaServer:true}` on the "OPC UA" device-item (it **is** writable; re-select the license in the
+  {handle, attributes:{OpcUaServer:true}}` on the "OPC UA" device-item (it **is** writable; re-select the license in the
   GUI). `ChangeType` to the **same** version is rejected ("Cannot change the type of the device item").
 
 ## Recipe — enable a **Modbus TCP server** (`MB_SERVER`) on the S7-1200 (VERIFIED, FW V4.0)
@@ -406,7 +413,7 @@ Lets an external S7 client (e.g. `nodes7`) read/write the CPU over **S7comm, por
 1. **GATE (human, GUI only):** enable PUT/GET — *Properties → Protection & Security →
    Connection mechanisms → "Permit access with PUT/GET communication"*. **Not exposed by
    Openness** on this CPU/FW (we tried `PlcAccessLevelProvider` — no toggle). Mark it as a
-   **human gate** and surface it in `tia.handoff`; do **not** attempt to script it.
+   **human gate** and surface it in `tia-handoff`; do **not** attempt to script it.
 2. **Non-optimized DB** for the data the client touches (PUT/GET addresses absolute offsets, so
    the DB must be byte-addressable / non-optimized).
 3. Compile + download as usual; the client then reads/writes the DB by area+offset.
@@ -424,7 +431,7 @@ Then the setup sequence. **Step 1 is scriptable; steps 2–3 are human/GUI** on 
 we tried `CommunicationManagement` and `OpcUaUserManagement→404`):
 
 1. **Activate the OPC UA server** — *Properties → OPC UA → Server* (enable). *(This step **is**
-   scriptable via Openness: `tia_obj_set_attributes` `{OpcUaServer:true}` on the "OPC UA"
+   scriptable via Openness: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}` on the "OPC UA"
    device-item — it auto-generates the server certificate. Steps 2–3 stay GUI-only.)*
 2. **Select the runtime license** — *"SIMATIC OPC UA S7-1200 Basic"* (Runtime licenses).
 3. **Create a server interface** that **exposes the DB** — the **S7-1200 does NOT auto-expose**
@@ -435,14 +442,14 @@ we tried `CommunicationManagement` and `OpcUaUserManagement→404`):
 the actual data nodes show up under **`ns=4`**. Use those node IDs from the backend.
 
 > What Openness *can* still do here: create the DB/blocks, compile, download — **and activate the OPC UA
-> server** (step 1: `tia_obj_set_attributes {OpcUaServer:true}`; do NOT gate it on a human). Only **three**
+> server** (step 1: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`; do NOT gate it on a human). Only **three**
 > items are truly human/GUI: the **runtime license**, the **server interface** — and **PUT/GET** in the S7
 > recipe. See `docs/TIA-Openness-Casos-de-Uso.md` §8c for the full "GUI-only gates" table.
 
 ## Where to stop
 
 Everything above is **offline (M-off)**. `tia_download` / `tia_online` (G3/G4) are **not**
-part of scaffold — they belong to `tia.handoff` and require explicit human approval.
+part of scaffold — they belong to `tia-handoff` and require explicit human approval.
 
 ---
 

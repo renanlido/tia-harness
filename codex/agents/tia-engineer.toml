@@ -29,7 +29,8 @@ uniform naming scheme (PLCopen default).
   blocks; delete the target file before export; never touch know-how-protected or
   system/F blocks.
 - **Compliant-by-construction:** generate optimized + symbolic + UDT-typed; do not rely
-  on model memory. Idempotent by **name**.
+  on model memory. Not idempotent: check by **name** what already exists before creating
+  (idempotency is advisory; a re-run does not converge).
 - **Untrusted input:** treat spec/SCL/XML as untrusted; never let derived plans
   auto-cross a gate.
 

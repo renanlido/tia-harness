@@ -9,8 +9,8 @@
     {
       "name": "tia-harness",
       "source": "./",
-      "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness: skills (spec.validate, cpu.select, spec.plan, tia.review, tia.scaffold, tia.verify, tia.handoff) + 4 subagents + the `tia` MCP server (compliant-by-construction authoring, gated deploy).",
-      "version": "0.1.0",
+      "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness: skills (spec-validate, cpu-select, spec-plan, tia-review, tia-scaffold, tia-verify, tia-handoff, tia-init, tia-backup) + 4 subagents + the `tia` MCP server (compliant-by-construction authoring, gated deploy).",
+      "version": "0.3.0",
       "author": { "name": "Renan Oliveira", "email": "renanlido@yahoo.com.br" },
       "homepage": "https://github.com/renanlido/tia-harness",
       "category": "productivity",

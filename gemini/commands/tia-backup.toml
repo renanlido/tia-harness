@@ -1,20 +1,27 @@
 description = "Back up a PHYSICAL CPU into a dedicated EMPTY project (save+archive working project, station-upload GATE G4 with human approval, archive to .zap21). NEVER uploads into the working project."
 
 prompt = """
-You are running the `tia.backup` workflow (port of the Claude Code skill of the same name).
+You are running the `tia-backup` workflow (port of the Claude Code skill of the same name).
 
 GOAL: Read a PHYSICAL CPU into a restorable `.zap21` archive. The upload ADDS a new
 station to the open project — so the backup always goes into a DEDICATED, DATED, EMPTY
-project, never the working project. This workflow is M-off up to the gate; the upload
+project, never the working project. This workflow is class M-off up to the gate; the upload
 itself is GATE G4 (+G6 if a read password is requested) and NEVER runs without an
 explicit human yes. A backup reads; it never writes or stops the CPU.
+
+ERRORS AND REPORTING:
+- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means a job is still running: poll `tia_job_status` with the `jobId` you hold, or wait and ping again. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
+- If no `tia_*` tool is available, the `tia` MCP is not connected: say so and stop. Never continue from memory and never work around it with hand-made HTTP calls (they bypass the MCP's gate checks).
+- On a tool error (`isError:true`), quote its `error` and `kind` verbatim, relay its `hint`, and state what was done and what was not. Apply only the remedy the hint or this skill names, at most once; otherwise stop and ask.
+- Never report success after an error, never retry a refused call with changed arguments, and never cross a human gate: relay a `requires_human_action` answer verbatim and wait for the human.
+- `status:"running"` or `kind:"busy"` is not a failure: poll `tia_job_status {jobId}`. After a `timeout`, check the state before repeating anything.
 
 INPUT (which CPU / where the backup project lives — e.g. "back up 192.168.68.240"):
 {{args}}
 
 PRECONDITIONS:
 - The serve is running and G1 (trust dialog) is done.
-- The license has the `deploy` scope (`tia_upload` is deploy-class).
+- The license has the `deploy` scope (`tia_upload`, the G4 step, is deploy-class).
 - The CPU's IP is known.
 - The PG/PC adapter/mode names: discover them with `tia_pg_interfaces` on the working
   project's PLC BEFORE switching projects (the adapter list is host-wide), or read them
@@ -27,7 +34,8 @@ PROCEDURE (in order):
    the name carries the `.zap21` extension — a missing or extension-less name fails).
    Report the resulting `<directory>/<name>` path. Tell the human the next step
    CLOSES it: `tia_project_create` replaces the open project, and unsaved work would be
-   lost — which is why the save comes first.
+   lost — which is why the save comes first. If the save or the archive
+   fails, STOP and report it: never create the backup project over unsaved work.
 1. **Create a dedicated EMPTY backup project.** `tia_project_create` in a folder the human
    picks, named `PLC_backup_<station-or-ip>_<YYYYMMDD-HHmm>`. Create NO device in it. The
    first connect of a new TIA process may raise G1.

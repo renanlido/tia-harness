@@ -1,0 +1,16 @@
+{
+  "name": "tia-harness",
+  "version": "0.3.0",
+  "description": "Siemens TIA Portal V21 automation harness for Codex: the `tia` MCP server and the specialist skills (spec validation, CPU selection, planning, review, scaffold, verify, gated handoff).",
+  "author": {
+    "name": "renanlido",
+    "email": "renanlido@yahoo.com.br"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/renanlido/tia-harness",
+  "repository": "https://github.com/renanlido/tia-harness",
+  "keywords": ["tia-portal", "siemens", "openness", "plc", "industrial-automation", "mcp"],
+  "skills": "./codex/skills/",
+  "mcpServers": "./codex/mcp.json",
+  "hooks": "./codex/hooks.json"
+}

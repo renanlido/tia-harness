@@ -5,7 +5,21 @@ description: >-
   (F-signatures, F-runtime groups, PROFIsafe addresses, F-monitoring times) for human
   review. NEVER authors, modifies, downloads, or simulates safety logic — posture F,
   class R STRICT (G5: safety is never autonomous).
-tools: Read, Grep, Glob, mcp__plugin_tia-harness_tia__tia_guide, mcp__plugin_tia-harness_tia__tia_status, mcp__plugin_tia-harness_tia__tia_project_info, mcp__plugin_tia-harness_tia__tia_plcs, mcp__plugin_tia-harness_tia__tia_plc_blocks, mcp__plugin_tia-harness_tia__tia_plc_types, mcp__plugin_tia-harness_tia__tia_obj_roots, mcp__plugin_tia-harness_tia__tia_obj_items, mcp__plugin_tia-harness_tia__tia_obj_get, mcp__plugin_tia-harness_tia__tia_obj_info, mcp__plugin_tia-harness_tia__tia_job_status
+tools:
+  - read_file
+  - grep_search
+  - glob
+  - mcp_tia_tia_guide
+  - mcp_tia_tia_status
+  - mcp_tia_tia_project_info
+  - mcp_tia_tia_plcs
+  - mcp_tia_tia_plc_blocks
+  - mcp_tia_tia_plc_types
+  - mcp_tia_tia_obj_roots
+  - mcp_tia_tia_obj_items
+  - mcp_tia_tia_obj_get
+  - mcp_tia_tia_obj_info
+  - mcp_tia_tia_job_status
 ---
 
 # safety-reviewer — READ-ONLY, posture F

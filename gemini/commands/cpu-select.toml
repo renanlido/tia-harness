@@ -1,14 +1,17 @@
 description = "Recommend a Siemens S7-1500/S7-1200 CPU + variant + order number (MLFB) from an engineering need (class R, no MCP)."
 
 prompt = """
-You are running the `cpu.select` workflow (port of the Claude Code skill of the same name).
+You are running the `cpu-select` workflow (port of the Claude Code skill of the same name).
 
 GOAL: Map an engineering NEED to a concrete SIMATIC CPU recommendation: family ->
 sub-family/variant -> a representative order number (MLFB) -> the TIA `TypeIdentifier` string. This
 is **class R**: a deterministic heuristic over the curated CPU reference. It uses **NO MCP tool**
 and does not open TIA. The curated table is a CONVENIENCE reference, NOT ground truth — so the
-recommendation always ends with a flag to RESOLVE the concrete MLFB + firmware against `GET
-/catalog` on the target machine before any device creation.
+recommendation always ends with a flag to RESOLVE the concrete MLFB + firmware with `tia_catalog`
+on the target machine before any device creation.
+
+ERRORS AND REPORTING:
+- Uses no MCP tool and needs no `serve`: if a bundled reference file is missing or the need is ambiguous, say so and state the assumption; never present an unconfirmed value as confirmed.
 
 INPUT: The engineering need — any of: digital/analog I/O count, scan-time/performance target,
 program + data memory size, number/type of fieldbus ports (PROFINET, PROFIBUS DP), safety (SIL/PL),
@@ -42,14 +45,14 @@ OUTPUT a recommendation containing: `family`, `model`/`subFamily`, `mlfb` (repre
 number), `firmware` (representative `/V<major>.<minor>`, marked as needing catalog confirmation),
 `typeIdentifier` (assembled `OrderNumber:<MLFB>/V<fw>`), `variant` (for S7-1200: DC/DC/DC vs relay),
 `justification` (which criteria selected each axis, cite the decision step), `resolveNote` (ALWAYS:
-"Confirm this MLFB + firmware exists via `GET /catalog` and pass the returned
-`typeIdentifierNormalized` to device.create; do not hand-build the string in production"), and
+"Confirm this MLFB + firmware exists with `tia_catalog` and pass the returned
+`typeIdentifierNormalized` to `tia_device_create`; do not hand-build the string in production"), and
 `capabilityNotes` (gates implied: relay variant => no on-board PTO; S7-1200 => no STL/GRAPH; F-CPU
 => safety logic is human-authored/gated, never autonomous).
 
 HARD GUARANTEES:
 - NO MCP / NO TIA. Selection is offline. The only authoritative CPU list at runtime is
-  `GET /catalog`; this skill RECOMMENDS a candidate to resolve, it does not instantiate anything.
+  `tia_catalog`; this skill RECOMMENDS a candidate to resolve, it does not instantiate anything.
 - Deterministic decision order: same need -> same recommendation, each axis justified.
 - Resolve before build: the curated numbers drift by catalog generation; confirm against the live
   catalog before any device creation.

@@ -1,4 +1,4 @@
-// SessionStart nudge (tia-harness plugin): suggests running tia.init in ONE line, only
+// SessionStart nudge (tia-harness plugin): suggests running tia-init in ONE line, only
 // while the project's CLAUDE.md lacks the guide block. Once the block is present, it
 // exits silently — the MCP `instructions` already cover the ambient knowledge.
 import { readFileSync } from "node:fs";
@@ -17,7 +17,7 @@ process.stdout.write(
       hookEventName: "SessionStart",
       additionalContext:
         "The tia-harness plugin is installed but this project's CLAUDE.md has no harness guide block yet. " +
-        "Suggest running the tia.init skill once to inject the TIA operating guide (gates, gotchas, pipeline) " +
+        "Suggest running the tia-init skill once to inject the TIA operating guide (gates, gotchas, pipeline) " +
         "between idempotent markers.",
     },
   }),
