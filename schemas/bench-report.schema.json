@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/renanlido/TIAOpenness/schemas/bench-report.schema.json",
+  "title": "TIA bench report",
+  "description": "Evidence of one end-to-end bench run (epic #142): an agent uses the MCP and the harness skills against TIA Portal V21 and the S7-1200 bench. The runner writes it to tests/bench/out/<UTC stamp>/report.json; the capability coverage check (#147) and the beta-to-stable release gate (#148) read it. It is bound to the exact build under test through build.installerSha256. verdict `incomplete` means the run stopped at a human gate (G1 trust dialog, G3 download, G4 online/upload) that was not approved in that run; only `pass` gates a promotion. Validated by scripts/bench-report.mjs, a zero-dependency validator for the subset of Draft 2020-12 used here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "build", "startedAt", "finishedAt", "agent", "scenarios", "toolsExercised", "skillsExercised", "verdict"],
+  "properties": {
+    "schema": { "const": "bench-report/1" },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The exact build under test.",
+      "required": ["appVersion", "installerSha256", "mcpVersion", "harnessCommit", "repoCommit"],
+      "properties": {
+        "appVersion": { "type": "string", "minLength": 1, "description": "The app version, for a beta the full X.Y.Z-beta.N." },
+        "installerSha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "description": "SHA-256 of the installer that was installed through the updater; null for a source build, which can never gate a promotion."
+        },
+        "mcpVersion": { "type": "string", "minLength": 1 },
+        "harnessCommit": { "$ref": "#/$defs/commit" },
+        "repoCommit": { "$ref": "#/$defs/commit" }
+      }
+    },
+    "startedAt": { "$ref": "#/$defs/timestamp" },
+    "finishedAt": { "$ref": "#/$defs/timestamp" },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cli", "version"],
+      "properties": {
+        "cli": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "model": { "type": ["string", "null"] }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/scenario" }
+    },
+    "toolsExercised": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Every tia_* tool the run called.",
+      "items": { "type": "string", "pattern": "^tia_[a-z0-9_]+$" }
+    },
+    "skillsExercised": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Every harness skill the run used (a directory under skills/).",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }
+    },
+    "verdict": { "enum": ["pass", "fail", "incomplete"] },
+    "notes": { "type": "array", "items": { "type": "string" }, "description": "Runner remarks, for example why a run is incomplete." }
+  },
+  "$defs": {
+    "timestamp": { "type": "string", "format": "date-time", "description": "RFC 3339, UTC." },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "A git commit SHA, abbreviated or full, lower case." },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The result of one scenario of tests/bench/scenarios/<id>/.",
+      "required": ["id", "ok", "steps", "handoffs", "verification"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ok": { "type": "boolean" },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "handoffs": { "type": "array", "items": { "$ref": "#/$defs/handoff" } },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["checks"],
+          "properties": {
+            "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } }
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "description": "One tool or skill call of the run. Fields beyond the ones below are allowed.",
+      "required": ["name", "ok", "ms"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "tool": { "type": "string", "pattern": "^tia_[a-z0-9_]+$" },
+        "skill": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "ok": { "type": "boolean" },
+        "ms": { "type": "number", "minimum": 0 },
+        "error": { "type": "string" }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "description": "A human gate the run reached. A run that was approved carries approvedBy and resumedAt; one that stopped there does not. G5 (safety/F) is never in scope. Fields beyond the ones below are allowed.",
+      "required": ["gate", "at"],
+      "properties": {
+        "gate": { "enum": ["G1", "G3", "G4", "G6", "G7", "unknown"], "description": "The product's gate. G3 download, G4 online or station upload, G1 trust dialog, G6 credentials, G7 network scan; `unknown` for a gate name this schema does not know yet." },
+        "kind": { "type": "string", "description": "The product's own gate name, for example trust_dialog, download_approval, go_online, station_upload." },
+        "at": { "$ref": "#/$defs/timestamp" },
+        "approvedBy": { "type": "string", "minLength": 1 },
+        "resumedAt": { "$ref": "#/$defs/timestamp" },
+        "planHash": { "type": ["string", "null"] },
+        "fingerprint": { "type": ["string", "null"] },
+        "youMustDo": { "type": ["string", "null"] },
+        "nextSteps": { "type": "array", "items": { "type": "string" } },
+        "plan": { "type": ["object", "null"] },
+        "target": {}
+      }
+    },
+    "check": {
+      "type": "object",
+      "description": "One check of the scenario's expect.json as run, plus the outcome. Fields beyond the ones below are the check's own (value, changes, withinMs, ...).",
+      "required": ["protocol", "op", "address", "ok", "observed"],
+      "properties": {
+        "protocol": { "enum": ["modbus", "s7", "opcua"] },
+        "op": { "enum": ["read", "write-then-read", "observe"] },
+        "withinMs": { "type": "integer", "minimum": 0 },
+        "ok": { "type": "boolean" }
+      }
+    }
+  }
+}
