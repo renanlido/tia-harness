@@ -48,20 +48,7 @@ commissioner.
    not an error: relay its `youMustDo`/`nextSteps` to the human verbatim, wait for their
    explicit yes, then resume exactly as instructed. Never self-approve a download; never
    invent a secret (G6); never author, modify or deploy safety/F logic (G5).
-3. **Compile before deploy.** `tia_compile` aggregates hardware + software and is the
-   offline verifier: `errors:0` is the Gd9 precondition for download (G3) and for S7
-   connections.
-4. **Follow the build pipeline order** (details: `tia_guide {"topic":"pipeline"}`):
-   validate the spec (`tia_spec_validate`) → plan (`tia_spec_plan`) → scaffold
-   (`tia_spec_apply` or the M-off tools) → verify (`tia_compile`) → human-gated deploy
-   (`tia_download` with dryRun → human approval → `approved:true` + the same `planHash`).
-5. **Some CPU settings are GUI-only** (PUT/GET permission, OPC UA runtime license,
-   OPC UA server interface). Hitting one is EXPECTED, not a bug: relay the exact GUI
-   steps from `tia_guide {"topic":"gui-gates"}` and resume after the human confirms.
-6. **Prerequisites:** the serve must be running (default `http://localhost:5000` —
-   check with `tia_ping`); the FIRST connect per serve process hits the G1 trust dialog
-   on the serve host.
-7. **Long operations are jobs.** A tool whose description says "Long operation" (connect,
+3. **Long operations are jobs.** A tool whose description says "Long operation" (connect,
    compile, download, upload, project create/save/archive, exports, CAx…) may answer `status:"running"` with a
    `jobId` — the operation is STILL running on serve. Call `tia_job_status {jobId}`
    until it returns the final result; never repeat the original call. While a job runs,
@@ -69,6 +56,28 @@ commissioner.
    expected, not a failure: go back to `tia_job_status`. `tia_ping` probes `/health`: never busy,
    `activated:null` while a job runs, and no job ID in it — use it for reachability only. Offline
    tools (`tia_guide`, `tia_spec_validate`, `tia_spec_plan`, `tia_job_status` itself) never answer busy.
+4. **Compile before deploy.** `tia_compile` aggregates hardware + software and is the
+   offline verifier: `errors:0` is the Gd9 precondition for download (G3) and for S7
+   connections.
+5. **Follow the build pipeline order** (details: `tia_guide {"topic":"pipeline"}`):
+   validate the spec (`tia_spec_validate`) → plan (`tia_spec_plan`) → scaffold
+   (`tia_spec_apply` or the M-off tools) → verify (`tia_compile`) → human-gated deploy
+   (`tia_download` with dryRun → human approval → `approved:true` + the same `planHash`).
+6. **Some CPU settings are GUI-only** (PUT/GET permission, OPC UA runtime license,
+   OPC UA server interface). Hitting one is EXPECTED, not a bug: relay the exact GUI
+   steps from `tia_guide {"topic":"gui-gates"}` and resume after the human confirms.
+7. **Prerequisites:** the serve must be running (default `http://localhost:5000` —
+   check with `tia_ping`); the FIRST connect per serve process hits the G1 trust dialog
+   on the serve host.
+8. **Confirmation dialogs.** Where the client supports it, a gated call first asks the human in the client's dialog
+   (elicitation); only the human answers it, and it never replaces dryRun → approval → `planHash`. `declined_by_human` /
+   `cancelled_by_human` = refused, nothing sent: stop, no retry unless asked.
+9. **Size budget and paging.** A result holding `{"omitted":true,…}` had that value cut out WHOLE by the MCP's size budget:
+   repeating the same call returns the same marker, so follow its `hint` instead. Read large lists (`tia_plc_blocks`,
+   `tia_plc_tags`, `tia_device_tree`) in pages: pass `limit`, then each `nextCursor` as `cursor` until it is `null`. A page
+   with a marker has NO `nextCursor` (it would skip the omitted data): retry the same request with a smaller `limit`.
+   `cursor_stale` means the project changed: restart from the first page (no `cursor`). Gate handoffs, plans and job
+   envelopes are never cut. For XML too big for one result use `tia_export_xml` (it writes files on the serve host).
 
 Session start: `tia_ping` → `tia_status` → (if needed) `tia_start` / `tia_connect`.
 Before the first build on a project: read `tia_guide {"topic":"pipeline"}` and
@@ -165,15 +174,30 @@ on the "OPC UA" device-item (it auto-generates the server certificate). Only the
    dedicated EMPTY project.** Observed on hardware (S7-1200 1214C, 2026-09-26): the upload read
    the CPU into an empty project (0 → 1 device, twice) in ~75 s (76.7 s and 74.2 s); the CPU
    stayed in RUN the whole time (owner watching its LEDs during the second upload). Protect the
-   working project FIRST: `tia_project_create` CLOSES the current project without saving, so
-   `tia_project_save` + `tia_project_archive` before creating the backup project — and pass the
-   archive `name` WITH the `.zap21` extension (`name` absent or extension-less fails; with
-   `.zap21` it archived 1.6 MB).
+   working project FIRST: `tia_project_create` closes the current project, and serve refuses it
+   (`409 unsaved_changes`) while that project has unsaved changes — so `tia_project_save` +
+   `tia_project_archive` before creating the backup project (never pass `discardUnsavedChanges` to
+   get past the refusal) — and pass the archive `name` WITH the `.zap21` extension (`name` absent
+   or extension-less fails; with `.zap21` it archived 1.6 MB).
 8. **One wrong know-how password can lock a block for the session.** Observed on the bench
    (2026-10-12): after one rejected unprotect (`tia_block_protect {protect:false}`), TIA refused
    the CORRECT password of that block for the rest of the session (cause not confirmed — possibly
    brute-force protection). Never retry with a guess — ask the human for the password (G6); if a
    password the human confirms is refused, stop and hand off instead of retrying.
+9. **`unsaved_changes` and `binding_conflict` are refusals, not faults: nothing was changed.**
+   `tia_connect`, `tia_project_close`, `tia_disconnect` and `tia_project_create` answer
+   `409 unsaved_changes` when the call would close a project with unsaved changes (the error lists
+   each one). ASK the human; the recommended answer is to repeat the same call with
+   `saveUnsavedChanges:true`. Pass `discardUnsavedChanges:true` (data loss) ONLY when the human
+   explicitly decides to throw the work away, never to make the error go away (the client then asks
+   the human to confirm in its own dialog; `declined_by_human` = nothing was sent, stop).
+   `409 binding_conflict` means the project this session is bound to is no longer the one open in
+   the bound TIA (closed, replaced or Save As done by hand; `tia_status` shows `boundProjectPath`
+   and `bindingDrift`): ask the human which project is intended, then `tia_connect` with the bound
+   path (back to it) or the open one (adopt it) — do not repeat the refused call first.
+10. **`503 audit_unavailable`: the serve could not write its audit log, so it refused the call BEFORE
+   running (nothing reached the PLC).** Have the human fix the disk or permissions, then re-plan.
+   An `auditWarning` in a response = the call ran but was not fully recorded: report it.
 
 ## Prerequisites (environment)
 
@@ -196,13 +220,11 @@ Stages in order — the class tells you what each stage may do:
 | 1 | Plan | `tia_spec_plan` | R (pure) | Turns a VALID spec into the ordered list of M-off operations. Nothing mutates. |
 | 2 | Scaffold | `tia_spec_apply` (or the M-off tools manually) | M-off | Creates the project content in dependency order (see below). Stops at every gate. |
 | 3 | Verify | `tia_compile` | M-off | THE offline verifier: aggregates hardware + software. Gd8: only ERRORs block. `errors:0` is the Gd9 precondition for any deploy. |
-| 4 | Handoff / deploy | `tia_download` | GATE G3 | `dryRun:true` asks serve for a VERIFIED plan (clean compile, resolved connection, software fingerprint) → plan + `planHash` → a HUMAN approves → re-call with `approved:true` + the SAME `planHash` (serve re-checks the fingerprint and refuses `plan_stale` if the software changed). The approval covers the connection/options and the covered software content — NOT the hardware configuration (a hardware change after approval passes the token check). Re-plan (new dryRun) + fresh human approval only when the hardware configuration changed AFTER the dryRun that produced the token — the fingerprint cannot detect that change, so the human must confirm nothing hardware-side moved; never reuse the old token for changed hardware. Fingerprint limits: user program blocks, UDTs and tag tables only — no hardware configuration, system block groups, S7-1500 software units or technology objects; per-object fallback to modification dates (`source:"dates"`, warned in the plan — dates can false-positive `plan_stale`). Never self-approve. Pick the connection with `tia_pg_interfaces` (no scan). |
+| 4 | Handoff / deploy | `tia_download` | GATE G3 | `dryRun:true` asks serve for a VERIFIED plan (clean compile, resolved connection, software fingerprint) → plan + `planHash` → a HUMAN approves → re-call with `approved:true` + the SAME `planHash` (serve re-checks the fingerprint and refuses `plan_stale` if the software changed). The approval covers the connection/options and the covered software content — NOT the hardware configuration (a hardware change after approval passes the token check). Re-plan (new dryRun) + fresh human approval only when the hardware configuration changed AFTER the dryRun that produced the token — the fingerprint cannot detect that change, so the human must confirm nothing hardware-side moved; never reuse the old token for changed hardware. The fingerprint covers only user program blocks, UDTs and tag tables (what it leaves out, the `source:"dates"` fallback: `tia_guide {"topic":"recipes"}`, 'Reference — download plan fingerprint limits'). Never self-approve. Pick the connection with `tia_pg_interfaces` (no scan). |
 
-Scaffold order (dependency-correct): subnets → devices (CPUs first) → modules →
-network/IP/IO-system → protection recipe (`tia_guide {"topic":"recipes"}`) → tag
-tables → tags → constants → UDTs BEFORE dependent blocks → FB shells + instance DBs →
-logic (SCL/STL via `tia_source_put`; LAD/FBD/GRAPH via `tia_import_xml` — Gd6 format
-routing) → `tia_compile`.
+Scaffold order (UDTs BEFORE the blocks that use them): `tia_spec_apply` follows it; by hand, `tia_guide {"topic":"recipes"}`, 'Pipeline order'.
+
+PLC-scoped steps use the PlcSoftware (e.g. `PLC_1`) read after the device step, not the device name.
 
 ## The approval envelope (what a gate handoff looks like)
 
@@ -218,20 +240,47 @@ Gated tools return `status:"requires_human_action"` with:
 Relay the envelope to the human, wait for an explicit yes, resume exactly as
 instructed. The AI never approves, never invents a secret, never deploys F-logic.
 
+**Confirmation dialog.** When the client supports elicitation, the crossing calls (`tia_download` with
+`approved:true`; `tia_upload`, `tia_online`, `tia_accessible_devices` with `confirm:true`) first ask the
+human in a dialog; clients without it behave as before. The dialog only checks the human's answer: the
+`planHash` and serve's approval token stay the authority.
+Passwords (G6) are never asked there. `declined_by_human` / `cancelled_by_human` = the human refused:
+nothing was sent, no retry unless asked. `elicitation_failed` (`isError`) = the dialog could not be
+shown or answered, nothing was sent (fails closed).
+
 ## After scaffolding
 
 - Re-run `tia_compile` after ANY authoring change.
 - `tia_project_save` regularly; `tia_project_archive` BEFORE risky operations
   (firmware change — see `tia_guide {"topic":"gotchas"}`).
-- Auditing an existing project is class R: read blocks/types/tags via `tia_plc_*` and
-  check the engineering baseline (optimized access, 100% symbolic, UDT-typed
-  interfaces, FB + instance-DB, uniform naming).
-- **The project matches what's versioned — prove it, don't assume it.** A raw hash of an
-  export is NOT proof (two exports of the same block differ in `<Created>`/UIds). Use
-  `tia_export_block` to pull a block inline and `tia_block_compare` to diff it against the
-  committed XML (normalized — ignores formatting/BOM/`<Created>`/UIds); `verdict:"equal"` is
-  the actual round-trip proof. After `tia_compile`/`tia_source_put`, read `blockChanges` and
-  export/commit any regenerated instance DBs before calling the project verified.
+- Auditing an existing project is class R (`tia_plc_*` reads); baseline: `tia_guide {"topic":"recipes"}`, 'Reference — network, audit and CAx how-to'.
+- `tia_crossrefs` (class R, a long read: it may answer `status:"running"` + `jobId`, then poll
+  `tia_job_status`) reads the cross-references: in an audit, `filter:"UnusedObjects"` lists
+  unused-object CANDIDATES, never proof (OBs, objects used only from outside the PLC such as an
+  HMI, OPC UA or another CPU, and library TYPEs show as unreferenced); before changing an
+  existing object, `target` + `kind` + `filter:"ObjectsWithReferences"` returns the objects related
+  to it with each `referenceType` and `access` as TIA reports them (the direction of `Uses` /
+  `UsedBy` is not interpreted: the human confirms it). Page a whole-PLC or container read with `limit`
+  (for example 200) and `cursor` (the `nextCursor` of the previous page, until it is null; on
+  `cursor_stale` restart from the first page, and on an omission marker repeat the same request
+  with a smaller `limit`, never following a cursor from an omitted page); each page re-reads the
+  whole PLC, so a later page can report less than an earlier one. Read `coverage` on every page,
+  not only the first, and compare its counts across pages: differing counts restart the walk once
+  from the first page (like `cursor_stale`). Only a finished walk whose pages all report
+  `coverage.complete: true` supports "audited completely" or "nothing uses this"; an omission
+  marker, an unfinished walk, differing counts or `coverage.complete: false` on any page (see
+  `coverage.unavailableOwners`) means the result is NOT complete.
+- **FAT/SAT I/O list** (`tia-verify` step 6): `tia_io_map`; recipe: `tia_guide {"topic":"recipes"}`, 'Recipe — generate the FAT/SAT I/O list'.
+- **Prove the project matches what's versioned** (a raw hash is NOT proof): `tia_guide {"topic":"recipes"}`, 'Recipe — prove the project matches the versioned XML'.
+
+## Network lifecycle (subnets, PROFINET names, IO systems)
+
+Read first (`tia_subnet_get`, `tia_device_network`, `tia_io_systems`), then run each write's `dryRun` (answered by
+the serve, needs an open project). Order, PROFINET names, `disconnectNodes`: `tia_guide {"topic":"recipes"}`, 'Reference — network, audit and CAx how-to'.
+
+- **Refused, nothing changed:** `tia_subnet_delete` of a non-empty subnet (`409 subnet_not_empty`);
+  `tia_io_system_connect` across subnets (`409 cross_subnet_assignment`: `tia_network_connect` the device to that subnet first).
+- **`409 postcheck_failed`:** the write did not take effect as asked: re-read, never repeat blindly.
 
 ## Libraries, HMI, CAx and PLC security
 
@@ -239,34 +288,33 @@ Reads are class R; every change is class M-off (offline, with `dryRun`) and reac
 only through a later `tia_compile` + human-gated `tia_download` (G3). Every file path is a
 path ON THE SERVE HOST.
 
+- **Guarded PLC writes** (`tia_tag_update`, `tia_constant_update`, `tia_constant_delete`,
+  `tia_tagtable_delete`, `tia_block_group_delete`, `tia_ob_create`, `tia_block_compile`): the serve
+  answers their `dryRun` (it needs an open project) with the guard verdict (name collision, default
+  tag table, non-empty group, singleton OB).
 - **Project library:** `tia_library_mastercopies` / `tia_library_types` read it;
-  `tia_library_mastercopy_create` turns a DEVICE into a master copy (a block cannot be a source).
-  `tia_block_from_mastercopy` needs a master copy that holds PLC blocks — a device copy is
-  refused (`409 mastercopy_not_blocks` after app 1.6.3; up to 1.6.3 a 500).
-- **Global libraries** live in the TIA Portal session, not the project: `tia_global_libraries`,
-  `tia_global_library_create` / `_open` / `_save` / `_close`. Save/close take the name from
-  `tia_global_libraries` (exact name first, then ignoring case). After app 1.6.3 a name that
-  picks no single open USER library is refused, nothing saved or closed: `404 not_found`
-  (`details.userLibraries` lists the names that work), or `409 conflict` for a read-only
-  system/corporate library or a name several user libraries match only ignoring case; up to
-  1.6.3 the serve reports success even for an unknown name. A library opened read-only
-  (`readWrite:false`) cannot be saved: `409 conflict` (`details.readOnly`) after app 1.6.3, a
-  500 up to 1.6.3 — close it and open it again with `readWrite:true` to change and save it.
+  `tia_library_mastercopy_create` turns a DEVICE into a master copy (a block cannot be a source);
+  `tia_block_from_mastercopy` needs one that holds PLC blocks.
+- **Global libraries** (in the TIA Portal session, not the project): `tia_global_libraries`,
+  `tia_global_library_create` / `_open` / `_save` / `_close`; save/close take the name from
+  `tia_global_libraries` (exact name first, then ignoring case). REFUSED, nothing saved or closed
+  (`404 not_found` / `409 conflict`): a name that picks no single open USER library (unknown, read-only
+  system/corporate, several matches ignoring case) and a save of a `readWrite:false` library. Up to app
+  1.6.3 an unknown name can report success without saving or closing anything: check `tia_global_libraries`.
 - **HMI:** `tia_hmis` and `tia_hmi_screens` read any HMI; screen files
   (`tia_hmi_screen_export`, `tia_hmi_screens_import`) work for WinCC **Classic** only, and the
   import OVERWRITES same-named screens.
-- **CAx (AutomationML):** `tia_cax_export` (one device or the whole project) and
-  `tia_cax_import` (`option`: `RetainTiaDevice` default / `OverwriteTiaDevice` /
-  `MoveToParkingLot`). Archive the project before an overwrite. A failed transfer is an error
-  (`500 cax_transfer_failed`) after app 1.6.3; up to 1.6.3 the serve returns an opaque
-  `result` even on failure — check the devices with `tia_devices`.
+- **CAx (AutomationML):** `tia_cax_export` / `tia_cax_import` (scope, `option` values: recipes). Archive the
+  project before an overwrite. A failed transfer is an error after app 1.6.3; on an older serve check the
+  devices with `tia_devices`.
+- **Error contracts by app version:** `tia_guide {"topic":"recipes"}`, 'Reference — global library and CAx error contracts (by app version)'.
 - **PLC security:** `tia_certificates` / `tia_certificate_template` / `tia_password_policy`
   read; `tia_certificate_import` / `_export` / `_delete`, `tia_password_policy_set` and
   `tia_block_protect` change the project. **G6:** a block or certificate password and the
   password-policy values come from a HUMAN — never invent, guess or reuse one; dryRun plans
   show a password as `[redacted]`. A CPU without the certificate manager or a policy service
   answers 409.
-- **Multiuser:** `tia_local_sessions` lists the local sessions (empty in a single-user project).
+- **Multiuser:** `tia_project_servers`, `tia_server_projects` read Project Servers; `tia_local_session_open` needs NO open project (`tia_project_close`, `tia_start`). Nothing is ever checked in.
 
 ---
 

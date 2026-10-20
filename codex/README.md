@@ -50,7 +50,7 @@ the copy step below. **It is not published yet**, so that command does not work 
   `codex mcp add tia` stays on that route;
 - copies the 9 skills (these Codex-wording files) to `~/.agents/skills` and the 4 subagents to `<codex home>/agents`
   itself, **without the plugin**, so the skills are not listed as `tia-harness:<skill>`;
-- pre-approves the 39 read-only (class R) tools in that same section (`default_tools_approval_mode = "prompt"` plus
+- pre-approves the 62 read-only (class R) tools in that same section (`default_tools_approval_mode = "prompt"` plus
   `approval_mode = "approve"` per read-only tool); every tool that changes the project or touches the PLC still asks;
 - records everything, so its `uninstall` removes only what it added. Hand-made skill folders that are exactly a version the
   public repository released are moved aside; a hand-made subagent file of a released version is replaced by the new one
@@ -61,7 +61,7 @@ the copy step below. **It is not published yet**, so that command does not work 
 Use one route: it stops for Codex while the plugin is installed (remove it with the Uninstall commands below), and a
 `codex mcp add tia` run by hand after it wrote the section makes Codex rewrite that section and drop the pre-approvals.
 It was tested only against the real `codex-cli` 0.145.0 in throw-away homes (Codex reads the section as the `tia` server
-with the 39 pre-approvals, and uninstall restores `config.toml` byte for byte) and never in a model session, so a read-only
+with the 62 pre-approvals, and uninstall restores `config.toml` byte for byte) and never in a model session, so a read-only
 tool was not seen running without a prompt. That Codex validates `approval_mode` (an unknown value makes it refuse the whole
 configuration, so `codex mcp get` exiting 0 shows the section was parsed) was seen in a separate spike, recorded in
 [the research](../docs/research/2026-10-16-class-r-preapproval.md).
@@ -122,12 +122,12 @@ cmd (Git Bash rewrites `/c` into `C:/`).
 
 ## The operating guide
 
-The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 34 KB. Codex stops reading instructions at
+The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 61 KB. Codex stops reading instructions at
 `project_doc_max_bytes` (32 KiB by default; the AGENTS.md docs describe it for the combined project instructions, and the global file is read first), so it is not
 installed globally and never overwrites `~/.codex/AGENTS.md`. Use one of:
 
 - **Ask for it per project:** in a project, tell Codex to run the `tia-init` skill. It writes the Codex-sized guide (about
-  23 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
+  27 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
   plugin's copy; the recipes stay one `tia_guide` call away) between
   `<!-- tia-harness:start -->` and `<!-- tia-harness:end -->` in that project's `AGENTS.md`, touching nothing outside
   the markers, and re-running only refreshes the block. If the project's own `AGENTS.md` is large, raise the limit

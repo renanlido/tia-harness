@@ -42,12 +42,17 @@ the restorable artifact.
    name:"<working-project>_<YYYYMMDD-HHmm>.zap21" }` (the directory must already exist;
    the name carries the `.zap21` extension — a missing or extension-less name fails).
    Report the resulting `<directory>/<name>` path. Tell the human the next step
-   **closes** it: `tia_project_create` replaces the open project, and unsaved work would be
-   lost — which is why the save comes first. If the save or the archive
-   fails, STOP and report it: never create the backup project over unsaved work.
+   **closes** it: `tia_project_create` replaces the open project, and `serve` refuses it with
+   `unsaved_changes` while that project has unsaved work — which is why the save comes
+   first. If the save or the archive fails, STOP and report it: never create the backup
+   project over unsaved work.
 1. **Create a dedicated EMPTY backup project.** `tia_project_create` in a folder the human
    picks, named `PLC_backup_<station-or-ip>_<YYYYMMDD-HHmm>`. **Create no device in it.**
    The first connect of a new TIA process may raise G1.
+   If it answers `unsaved_changes`, the working project changed after the save in step 0:
+   STOP and report `details.projects`. Never retry with `saveUnsavedChanges` or
+   `discardUnsavedChanges` (a flag would save or lose work the step-0 archive does not
+   contain).
 2. **`tia_upload` without confirm.** Relay the handoff verbatim. STOP if the project path
    isn't the new backup project or `devices` isn't empty.
 3. **After an explicit human yes:** re-call `tia_upload` with the SAME `ip`,
@@ -64,7 +69,9 @@ the restorable artifact.
 5. **Archive.** `tia_project_save` + `tia_project_archive { directory:"<an-existing-folder>",
    name:"PLC_backup_<station-or-ip>_<YYYYMMDD-HHmm>.zap21" }`. The `.zap` is the backup.
    Report its `<directory>/<name>` path, what it contains (expected) and what it doesn't.
-6. **Optional:** reopen the working project with `tia_connect` (the human decides).
+6. **Optional:** reopen the working project with `tia_connect` (the human decides). It
+   closes the backup project, which step 5 saved; if it answers `unsaved_changes`, STOP and
+   report it, and never pass `discardUnsavedChanges`.
 
 ## What it captures / does not
 
@@ -91,3 +98,5 @@ CPU stayed in RUN, archive `.zap21` 1.6 MB; G6 password path not hardware-verifi
 - **F is only reported (G5).** Never authored, modified or deployed.
 - **Never repeat after an unknown outcome.** Token spent → check `tia_devices` first.
 - **Never download as part of a backup.** A backup reads; it never writes or stops the CPU.
+- **Never discard.** `discardUnsavedChanges` is never passed in a backup: an
+  `unsaved_changes` refusal is reported to the human, never worked around.

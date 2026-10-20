@@ -296,6 +296,11 @@
           "enum": ["S7-1200", "S7-1500", "ET200SP", "ET200MP", "ET200PRO", "other"],
           "description": "CPU/IO family hint used by spec-validate for module-limit and language-by-family checks (e.g. no STL/GRAPH on S7-1200; S7-1200 SM limits 0/2/8). If omitted, the validator may infer it from the MLFB."
         },
+        "plcName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional name of the CPU device item, which is the name of the PlcSoftware (the PLC that tag tables, tags and blocks belong to). Sent to POST /devices as deviceItemName. If omitted TIA picks its default (PLC_1, PLC_2...), which is NOT the device name; tia_spec_apply resolves the real name from the serve after the device step."
+        },
         "outputType": {
           "type": "string",
           "enum": ["DC", "relay"],

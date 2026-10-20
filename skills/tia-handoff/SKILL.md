@@ -41,7 +41,7 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
 | **G4** | go online (connect to live CPU) | `tia_online` | it is safe to connect to the target machine |
 | **G4** | station upload (read CPU into project) | `tia_upload` | it is safe to connect to the target machine AND the open project is a dedicated backup project (the upload adds a new station — skill `tia-backup`) |
 | **G7** | network scan (accessible devices) | `tia_accessible_devices` | probing the local network via the PG/PC NIC |
-| **G6** | credentials: master secret / UMAC / upload read password / block know-how password / certificate password / password policy | `tia_mastersecret_set` (`{plc, password}`), `tia_mastersecret_reset`, `tia_connect` (`umacUser`/`umacPassword`), `tia_upload` (`password`), `tia_block_protect`, `tia_certificate_import`, `tia_password_policy_set` | supply the secret / decide the policy (human/credential vault); a reset only on the human's explicit request |
+| **G6** | credentials: master secret / UMAC / upload read password / block know-how password / certificate password / password policy / local-session logon dialog | `tia_mastersecret_set` (`{plc, password}`), `tia_mastersecret_reset`, `tia_connect` (`umacUser`/`umacPassword`), `tia_upload` (`password`), `tia_block_protect`, `tia_certificate_import`, `tia_password_policy_set`, `tia_local_session_open` (a UMAC-protected session may wait on a Siemens logon dialog on the serve host) | supply the secret / decide the policy / answer the logon dialog (human/credential vault); a reset only on the human's explicit request |
 | **G5** | safety/F author·modify·download | — | **never autonomous**; F deploy is a human, gated action |
 
 > **Two classes of human interaction.** The table above is **approval gates** — a human *approves an
@@ -95,6 +95,22 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
    `tia_block_protect` and `tia_certificate_import`, and `tia_password_policy_set` takes only values
    the human decided.
    A station upload (G4) is the `tia-backup` skill.
+
+## The confirmation dialog (when the client supports it)
+
+A client that supports elicitation shows its own confirmation dialog before a gated call goes
+through: `tia_download` with `approved:true`, and `tia_upload`, `tia_online` and
+`tia_accessible_devices` with `confirm:true`. A client without it behaves as before.
+
+- **Only the human answers it.** Never answer, dismiss or work around the dialog yourself.
+- **It never replaces the flow above.** dryRun → human approval → the flag with the `planHash`
+  still applies in full: the dialog only checks the human's answer, and serve's approval token
+  stays the authority. Passwords (G6) are never asked there.
+- **A refusal stops the call.** `declined_by_human` / `cancelled_by_human` (a result, not an
+  error) means the human refused: **nothing was sent** and the plan stays valid until its TTL
+  (the token was not consumed). **STOP**; do not retry unless the human asks you to.
+- `elicitation_failed` (`isError:true`) means the dialog could not be shown or answered:
+  nothing was sent. Relay it and STOP.
 
 ## The token's failure modes (`reasonCode` on a `download_approval` handoff)
 

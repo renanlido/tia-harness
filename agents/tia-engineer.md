@@ -17,6 +17,7 @@ tools:
   - mcp_tia_tia_plc_blocks
   - mcp_tia_tia_plc_tags
   - mcp_tia_tia_plc_types
+  - mcp_tia_tia_crossrefs
   - mcp_tia_tia_obj_roots
   - mcp_tia_tia_obj_items
   - mcp_tia_tia_obj_get
@@ -51,7 +52,7 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
-Long tools (`tia_compile`, `tia_export_xml`, `tia_export_block`, `tia_block_compare`) may answer `status:"running"` + `jobId`: call
+Long tools (`tia_compile`, `tia_export_xml`, `tia_export_block`, `tia_block_compare`, `tia_crossrefs`) may answer `status:"running"` + `jobId`: call
 `tia_job_status {jobId}` until the final result — never repeat the original call. A
 `kind:"busy"` answer means another job holds the serve: wait on its `details.jobId` the same way.
 

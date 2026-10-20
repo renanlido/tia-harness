@@ -45,7 +45,7 @@ extension**. It is **not published yet**, so that command does not work today: u
 - edits the one `mcpServers.tia` key of `~/.gemini/settings.json` (comments and other settings stay);
 - copies the 9 skills to the shared `~/.agents/skills` and the 4 subagents (the root `agents/*.md`, Gemini format) to
   `~/.gemini/agents`;
-- pre-approves the 39 read-only (class R) tools with a policy file of its own, `~/.gemini/policies/plcware-tia.toml` (one
+- pre-approves the 62 read-only (class R) tools with a policy file of its own, `~/.gemini/policies/plcware-tia.toml` (one
   `allow` rule per tool, never `trust: true`, which would allow every tool); tools that change the project or touch the
   PLC still ask;
 - records everything, so `uninstall` removes only what it added. Hand-made commands and skill folders that are exactly a

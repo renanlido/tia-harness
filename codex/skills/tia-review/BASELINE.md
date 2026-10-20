@@ -8,7 +8,7 @@ All reads are class R (read-only).
 | ID | Baseline rule | What to read | Predicate (PASS) | Severity |
 |---|---|---|---|---|
 | **B-OPT** | Optimized block access ON | block attribute via `tia_obj_get` on the block handle (the typed `tia_plc_blocks` may not expose it) — look for the "optimized access" / `MemoryLayout` attribute | every FB/FC/DB has optimized access = true (unless a documented reason: legacy/AT-overlay) | error |
-| **B-SYM** | 100% symbolic addressing | `tia_plc_tags` (tags have names + addresses); block bodies are not read here (see *Deep body checks* below) | no logic addresses memory absolutely (`%I/%Q/%M/%DB`) where a symbol should exist; all I/O mapped to named tags | error |
+| **B-SYM** | 100% symbolic addressing | `tia_plc_tags` (tags have names + addresses); the rendered block bodies (`tia_block_render` on the exported SimaticML, when available; see *Deep body checks* below) | no logic addresses memory absolutely (`%I/%Q/%M/%DB`) where a symbol should exist; all I/O mapped to named tags | error |
 | **B-FB-IDB** | State in FBs + instance DBs | `tia_plc_blocks` (types: OB/FB/FC/DB; `instanceOfName` where present) | reusable logic is in **FB**s with **instance DBs**; global DBs hold data, not ad-hoc state machines | warning |
 | **B-UDT** | Everything typed via UDT | `tia_plc_types` (UDTs) + DB/block interfaces | structured/repeated data uses **UDTs** (PLC data types); no copy-pasted struct layouts | warning |
 | **B-LANG** | Right language per task & family | `tia_plc_blocks` (`language`) + `tia_devices` (family) | language fits the task (SCL for math/loops, LAD/FBD for bool/interlocks, GRAPH for sequences) AND the family — **no STL/GRAPH on S7-1200** | error (family), warning (fit) |
@@ -38,9 +38,15 @@ Configurable, but enforce ONE scheme uniformly. Default reference:
   the optimized-access flag. Resolve the block's object handle (`tia_obj_roots` →
   `tia_obj_items` down to the block) and read its attributes with `tia_obj_get`.
 - **Deep body checks** (absolute addressing, language mix inside a block) need the block
-  body, which only an export holds. This skill never exports (`tia_export_xml` is class
+  body, which only an export holds. Read bodies through `tia_block_render` on SimaticML
+  exports that already exist (the project's versioned files, or exports the human provides):
+  LAD/FBD networks come out as pseudo-SCL, STL/GRAPH networks are marked not rendered, and
+  every `(* unsupported: ... *)` marker is logic that was not translated (read it in the
+  XML or report it as not reviewed). This skill never exports (`tia_export_xml` is class
   M-off: it compiles inconsistent blocks and replaces the files in its target folder).
-  Report those rules at the block level from `tia_plc_blocks` metadata, mark the body check
-  *not done*, and recommend `tia-verify` (its round trip exports) or ask the human.
+  Without an available export, report those rules at the block level from `tia_plc_blocks`
+  metadata, mark the body check *not done*, and recommend `tia-verify` (its round trip
+  exports) or ask the human. A rendered file may be older than the project: proving it
+  matches is `tia-verify`, not this skill.
 - **Never mutate.** Every finding is a *recommendation*. Writes belong to `tia-scaffold`
   (offline) behind the human; F changes never happen here (G5).

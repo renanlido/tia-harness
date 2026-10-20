@@ -3,7 +3,7 @@
     "tia": {
       "command": "npx",
       "args": ["-y", "@renanlido/tia-openness-mcp"],
-      "env_vars": ["TIA_API_BASE"],
+      "env_vars": ["TIA_API_BASE", "TIA_MCP_MODE"],
       "startup_timeout_sec": 90,
       "tool_timeout_sec": 150
     }

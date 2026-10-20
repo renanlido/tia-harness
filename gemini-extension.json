@@ -8,7 +8,8 @@
       "command": "npx",
       "args": ["-y", "@renanlido/tia-openness-mcp"],
       "env": {
-        "TIA_API_BASE": "${TIA_API_BASE:-http://localhost:5000}"
+        "TIA_API_BASE": "${TIA_API_BASE:-http://localhost:5000}",
+        "TIA_MCP_MODE": "${TIA_MCP_MODE:-full}"
       }
     }
   },
@@ -17,6 +18,11 @@
       "name": "PLCWare API URL",
       "description": "URL of the serve API that drives TIA Portal. Leave empty to use http://localhost:5000 (editor and serve on the same machine); use http://<vm-ip>:5000 for a remote Windows host.",
       "envVar": "TIA_API_BASE"
+    },
+    {
+      "name": "MCP mode",
+      "description": "Leave empty (or enter full) to register every tool. Enter read-only to register only the read tools, so the agent cannot change the project or the PLC; it needs the MCP release that includes read-only mode (older releases ignore it). Any other value stops the MCP from starting.",
+      "envVar": "TIA_MCP_MODE"
     }
   ]
 }

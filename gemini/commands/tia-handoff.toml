@@ -34,8 +34,9 @@ THE GATES (and the tool that fronts each):
   local network via the PG/PC NIC.
 - **G6** credentials — master secret / UMAC (`tia_mastersecret_set` (`{plc, password}`), `tia_mastersecret_reset`, `tia_connect`
   `umacUser`/`umacPassword`), upload read password (`tia_upload` `password`), block know-how password (`tia_block_protect`),
-  certificate password (`tia_certificate_import`), password policy (`tia_password_policy_set`) — human SUPPLIES the secret /
-  DECIDES the policy; a reset only on the human's explicit request.
+  certificate password (`tia_certificate_import`), password policy (`tia_password_policy_set`), local-session logon dialog
+  (`tia_local_session_open`: a UMAC-protected session may wait on a Siemens logon dialog on the serve host) — human SUPPLIES the
+  secret / DECIDES the policy / ANSWERS the logon dialog; a reset only on the human's explicit request.
 - **G5** safety / F author-modify-download — NO tool; NEVER autonomous; F deploy is a human, gated
   action.
 
@@ -88,6 +89,20 @@ PROCEDURE (in order):
    `tia_block_protect` and `tia_certificate_import`, and `tia_password_policy_set` takes only values
    the human decided. A station upload (G4)
    is the tia-backup workflow.
+
+CONFIRMATION DIALOG (when the client supports it):
+A client that supports elicitation shows its own confirmation dialog before a gated call goes through:
+`tia_download` with `approved:true`, and `tia_upload`, `tia_online` and `tia_accessible_devices` with
+`confirm:true`. A client without it behaves as before.
+- Only the human answers it. Never answer, dismiss or work around the dialog yourself.
+- It NEVER replaces the flow above. dryRun -> human approval -> the flag with the `planHash` still
+  applies in full: the dialog only checks the human's answer, and serve's approval token stays the
+  authority. Passwords (G6) are never asked there.
+- A refusal stops the call. `declined_by_human` / `cancelled_by_human` (a result, not an error) means
+  the human refused: NOTHING was sent and the plan stays valid until its TTL (the token was not
+  consumed). STOP; do not retry unless the human asks you to.
+- `elicitation_failed` (`isError:true`) means the dialog could not be shown or answered: nothing was
+  sent. Relay it and STOP.
 
 TOKEN FAILURE MODES (`reasonCode` on a `download_approval` handoff):
 A successful dry-run is NOT a handoff — it returns `status:"plan_ok"` with the `planHash`.

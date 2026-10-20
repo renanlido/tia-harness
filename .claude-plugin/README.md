@@ -32,7 +32,7 @@ work even before the MCP / `serve` are up.
 **Alternative, once published: the guided setup.** `npx @renanlido/plcware-setup` connects Claude Code, and also Claude
 Desktop, Codex, Gemini CLI, Cursor and VS Code, in one run and **without the plugin**: for Claude Code it adds the `tia`
 MCP server at user scope, copies the 9 skills to `~/.claude/skills` and the 4 subagents to `~/.claude/agents` (their tool
-names rewritten to `mcp__tia__*`, the standalone form), and pre-approves the 39 read-only (class R) tools, while every
+names rewritten to `mcp__tia__*`, the standalone form), and pre-approves the 62 read-only (class R) tools, while every
 tool that changes the project or touches the PLC still asks. It records what it adds, so its `uninstall` removes only
 that. It is **not published yet**, so the command does not work today: install the plugin as above. Use one route per
 agent: the guided setup stops for Claude Code while `tia-harness@tia-openness` is installed.
