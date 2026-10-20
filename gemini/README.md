@@ -6,10 +6,11 @@ engineering **project-spec** into a *compliant-by-construction*, *verified* TIA 
 **`tia` MCP server** over the project's Openness HTTP `serve` — while keeping the model an **assistant
 up to the gate, never an autonomous commissioner**.
 
-The source of truth is [`../.claude-plugin/`](../.claude-plugin/). This directory mirrors the same
-technical content (gates vs guards, the `tia_*` tool map, the GUI-gate table, the hard-won gotchas,
-the CPU table and recipes) adapted to Gemini's formats. Keep the technical content in sync with the
-Claude Code plugin; only the file format and vocabulary differ here.
+The operating-guide content (gates vs guards, the `tia_*` tool map, the GUI-gate table, the hard-won gotchas, the recipes)
+is written once, in [`../mcp/content/*.md`](../mcp/content/), and generated into [`GEMINI.md`](GEMINI.md) here, and into the
+Claude Code and Codex guide copies, by `cd mcp && npm run sync`: edit the chapters, never a generated guide. The subagent
+source is [`../agents/claude/`](../agents/claude/); the same command generates the Gemini files in the root `agents/` from
+it. The skills are the root [`../skills/`](../skills/), shared with Claude Code; only the file format and vocabulary differ.
 
 ## Install as a Gemini CLI extension (recommended until the guided setup is published)
 
@@ -45,9 +46,9 @@ extension**. It is **not published yet**, so that command does not work today: u
 - edits the one `mcpServers.tia` key of `~/.gemini/settings.json` (comments and other settings stay);
 - copies the 9 skills to the shared `~/.agents/skills` and the 4 subagents (the root `agents/*.md`, Gemini format) to
   `~/.gemini/agents`;
-- pre-approves the 62 read-only (class R) tools with a policy file of its own, `~/.gemini/policies/plcware-tia.toml` (one
-  `allow` rule per tool, never `trust: true`, which would allow every tool); tools that change the project or touch the
-  PLC still ask;
+- adds pre-approval allowances for the 62 read-only (class R) tools with a policy file of its own, `~/.gemini/policies/plcware-tia.toml` (one
+  `allow` rule per tool, never `trust: true`, which would allow every tool); it adds none for a tool that changes the
+  project or touches the PLC;
 - records everything, so `uninstall` removes only what it added. Hand-made commands and skill folders that are exactly a
   version the public repository released are moved aside; a hand-made subagent file of a released version is replaced by the
   new one (the old bytes are kept and `uninstall` puts them back), and an edited subagent file stops Gemini's plan. A

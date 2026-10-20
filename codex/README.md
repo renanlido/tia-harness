@@ -6,10 +6,11 @@ a structured engineering **project-spec** into a *compliant-by-construction*, *v
 by driving the **`tia` MCP server** over the project's Openness HTTP `serve` — while keeping the model
 an **assistant up to the gate, never an autonomous commissioner**.
 
-The source of truth is [`../.claude-plugin/`](../.claude-plugin/). This directory mirrors the same
-technical content (gates vs guards, the `tia_*` tool map, the GUI-gate table, the hard-won gotchas,
-the CPU table and recipes) adapted to Codex's formats. Keep the technical content in sync with the
-Claude Code plugin; only the file format and vocabulary differ here.
+The operating-guide content (gates vs guards, the `tia_*` tool map, the GUI-gate table, the hard-won gotchas, the recipes)
+is written once, in [`../mcp/content/*.md`](../mcp/content/), and generated into [`AGENTS.md`](AGENTS.md) here, and into the
+Claude Code and Gemini guide copies, by `cd mcp && npm run sync`: edit the chapters, never a generated guide. The subagents
+and skills here are hand-written Codex-format ports of [`../agents/claude/`](../agents/claude/) (the subagent source) and the
+root [`../skills/`](../skills/): keep their technical content in step with those; only the file format and vocabulary differ.
 
 ## What's in here
 
@@ -18,7 +19,7 @@ Claude Code plugin; only the file format and vocabulary differ here.
 codex/
 ├─ mcp.json                            # the `tia` MCP server the plugin registers
 ├─ hooks.json                          # empty on purpose: keeps the Claude-only SessionStart hook out of Codex
-├─ AGENTS.md                           # operating guide (port of .claude-plugin/CLAUDE.md)
+├─ AGENTS.md                           # operating guide (generated from mcp/content/ by `cd mcp && npm run sync`)
 ├─ agents/                             # subagents as TOML (name, description, developer_instructions)
 │  ├─ tia-engineer.toml               # offline program authoring
 │  ├─ hardware-architect.toml         # CPU / modules / network

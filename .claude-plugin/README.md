@@ -6,7 +6,7 @@ An industrial-automation + **Siemens TIA Portal V21** specialist harness, packag
 over the project's Openness HTTP API — while keeping the model an **assistant up to the
 gate, never an autonomous commissioner**.
 
-This directory is the harness skeleton. The professional methodology it distills —
+This repository is the harness skeleton (the plugin root is the repository root; this directory holds its manifests). The professional methodology it distills —
 program architecture, hardware/network rules, the verification ladder, and the
 gates/guards model — is bundled next to each skill (`BASELINE.md`, `RULES.md`,
 `RECIPES.md`, `CPU-TABLE.md`).
@@ -32,12 +32,13 @@ work even before the MCP / `serve` are up.
 **Alternative, once published: the guided setup.** `npx @renanlido/plcware-setup` connects Claude Code, and also Claude
 Desktop, Codex, Gemini CLI, Cursor and VS Code, in one run and **without the plugin**: for Claude Code it adds the `tia`
 MCP server at user scope, copies the 9 skills to `~/.claude/skills` and the 4 subagents to `~/.claude/agents` (their tool
-names rewritten to `mcp__tia__*`, the standalone form), and pre-approves the 62 read-only (class R) tools, while every
-tool that changes the project or touches the PLC still asks. It records what it adds, so its `uninstall` removes only
+names rewritten to `mcp__tia__*`, the standalone form), and adds pre-approval allowances for the 62 read-only (class R)
+tools (none for a tool that changes the project or touches the PLC; the permissions you already have stay authoritative).
+It records what it adds, so its `uninstall` removes only
 that. It is **not published yet**, so the command does not work today: install the plugin as above. Use one route per
 agent: the guided setup stops for Claude Code while `tia-harness@tia-openness` is installed.
 
-> `source` is `"./"` (this repo's root `.claude-plugin/` IS the plugin), per the official
+> `source` is `"./"` (the repo root IS the plugin; `.claude-plugin/` only holds its manifests), per the official
 > marketplace convention (source = the directory that *contains* `.claude-plugin/`). If a future
 > Claude Code build resolves it differently, that single field is the only thing to adjust.
 
@@ -63,9 +64,12 @@ moves aside the hand-made copies that are exactly a version the public repositor
 ## What's in here
 
 ```
-.claude-plugin/
-├─ plugin.json                     # plugin manifest: skills, agents, and the `tia` MCP server config
-├─ README.md                       # this file
+repo root/                        # the plugin root (marketplace `source` is "./")
+├─ .claude-plugin/
+│  ├─ plugin.json                  # plugin manifest: agents and the `tia` MCP server config
+│  ├─ marketplace.json             # marketplace entry (`tia-openness`) for this plugin
+│  ├─ README.md                    # this file
+│  └─ CLAUDE.md                    # the operating guide (generated: `cd mcp && npm run sync`)
 ├─ schemas/
 │  └─ project-spec.schema.json     # JSON Schema (Draft 2020-12) for the project-spec (§13.2)
 ├─ skills/
@@ -82,6 +86,8 @@ moves aside the hand-made copies that are exactly a version the public repositor
 │  ├─ tia-verify/                  # verification ladder: compile/consistency/export (class M-off)
 │  │  └─ SKILL.md
 │  ├─ tia-handoff/                 # prepare the gate envelope: download/online/safety (class GATE)
+│  │  └─ SKILL.md
+│  ├─ tia-init/                    # inject/refresh the operating-guide block in a project's CLAUDE.md (class R, file-only)
 │  │  └─ SKILL.md
 │  └─ tia-backup/                  # read a physical CPU into a .zap21 archive (M-off up to G4)
 │     └─ SKILL.md

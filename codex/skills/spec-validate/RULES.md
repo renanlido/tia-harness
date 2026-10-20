@@ -1,7 +1,8 @@
 # spec-validate — deterministic rule reference
 
 The authoritative cross-field rules `spec-validate` applies **on top of** the JSON
-Schema (`../../schemas/project-spec.schema.json`). Each rule is deterministic and has a
+Schema (`schemas/project-spec.schema.json` at the repository root; `SKILL.md` gives its path from this
+folder). Each rule is deterministic and has a
 stable ID used verbatim in the violation report. Derived from the TIA best-practices
 baseline (§13.2/§14), the SIMATIC CPU reference, and the harness gates/guards model.
 **No rule here calls the MCP** —

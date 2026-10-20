@@ -38,7 +38,7 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
 | Gate | Action | Tool | What the human must approve |
 |---|---|---|---|
 | **G1** | open/connect project (1st time) | `tia_connect` (+ `tia_show_ui`) | confirm the TIA trust dialog on the serve host |
-| **G3** | **download** (CPU STOP → overwrite → restart) | `tia_download` | the verified plan + software fingerprint: StopAll, OverwriteSystemData, StartModule, and (opt-in) UpgradeTargetDevice |
+| **G3** | **download** (CPU STOP → possible program delete → overwrite → restart) | `tia_download` | the verified plan + software fingerprint + EVERY `loadPreview.willConfirm` entry: StopAll, ResetModule = DeleteAll (a different program on the CPU is deleted), OverwriteSystemData, ConsistentDownload of blocks and alarm text libraries, StartModule, and UpgradeTargetDevice (only if opted in; without it a CPU that needs it refuses the load) |
 | **G4** | go online (connect to live CPU) | `tia_online` | it is safe to connect to the target machine |
 | **G4** | station upload (read CPU into project) | `tia_upload` | it is safe to connect to the target machine AND the open project is a dedicated backup project (the upload adds a new station — skill `tia-backup`) |
 | **G7** | network scan (accessible devices) | `tia_accessible_devices` | probing the local network via the PG/PC NIC |
@@ -67,11 +67,18 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
    hash of blocks/UDTs/tag tables — NOT hardware, system block groups or technology objects;
    falls back to modification dates when a block has no fingerprint provider). Only a `ready`
    plan returns a **`planHash`** — a **single-use token that expires** (`TIA_PLAN_TTL_MS`,
-   default 15 min) and lives only in this MCP process. **Nothing is sent to the CPU.**
+   default 15 min) and lives only in this MCP process — and a **`loadPreview.willConfirm`** list: every
+   selection serve will make during the load. **Nothing is sent to the CPU.**
 4. **Emit the handoff envelope** (`requires_human_action`):
    - `canDo` — e.g. "download to PLC_1".
-   - `youMustDo` — the concrete physical consequence (the CPU will STOP, system data is
-     overwritten, the CPU restarts) + confirm it is safe on the target line.
+   - `youMustDo` — the concrete physical consequence + confirm it is safe on the target line.
+   - `loadPreview` — reproduce **every** `loadPreview.willConfirm` entry of the dry-run answer, none dropped
+     or squeezed into "STOP → overwrite → restart": the CPU STOPS (`StopAll`); `ResetModule = DeleteAll`
+     deletes a DIFFERENT program already on the CPU; system data is overwritten; blocks and alarm text
+     libraries download consistently; the CPU restarts (`StartModule`); `UpgradeTargetDevice` is confirmed
+     only with `allowUpgradeTargetDevice:true`, otherwise a CPU that needs it refuses the load and may
+     already have been stopped; any other dialog serve does not recognise is left untouched and can abort
+     the load.
    - `plan` + `planHash` + `fingerprint` — show the human **both**: the hash binds the approval
      to this exact plan AND this exact software content — NOT the hardware configuration. Re-plan
      (new dryRun) + fresh human approval only if the hardware configuration changed AFTER the dryRun
