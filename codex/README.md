@@ -123,12 +123,12 @@ cmd (Git Bash rewrites `/c` into `C:/`).
 
 ## The operating guide
 
-The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 61 KB. Codex stops reading instructions at
+The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 62 KB. Codex stops reading instructions at
 `project_doc_max_bytes` (32 KiB by default; the AGENTS.md docs describe it for the combined project instructions, and the global file is read first), so it is not
 installed globally and never overwrites `~/.codex/AGENTS.md`. Use one of:
 
 - **Ask for it per project:** in a project, tell Codex to run the `tia-init` skill. It writes the Codex-sized guide (about
-  27 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
+  28 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
   plugin's copy; the recipes stay one `tia_guide` call away) between
   `<!-- tia-harness:start -->` and `<!-- tia-harness:end -->` in that project's `AGENTS.md`, touching nothing outside
   the markers, and re-running only refreshes the block. If the project's own `AGENTS.md` is large, raise the limit
