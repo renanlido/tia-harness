@@ -21,7 +21,7 @@
 
 ## Pipeline order (dependency-correct)
 
-`tia_spec_apply` already encodes this; use it manually only when the spec maps imperfectly.
+`tia_spec_apply` automates only steps 1-4, the tag tables and tags of 6, the FB shells and control-module instance DBs of 8, and the compile of 9. Protection (5), constants (6), UDTs (7), OB/FC/DB blocks and all block logic stay manual: declaring `dataTypes` in the spec imports nothing. The FB shells of 8 are empty: their logic is step 8 by hand.
 
 1. **Subnets** (`tia_subnet_create`) — before connecting devices to them.
 2. **Devices** (`tia_device_create`, `OrderNumber:<MLFB>/V<fw>`) — CPUs first.
@@ -31,8 +31,8 @@
 5. **Protection recipe** (below) — so the CPU can compile clean.
 6. **Tag tables** (`tia_tagtable_create`) → **tags** (`tia_tag_create`) → **constants**.
 7. **UDTs first** (`tia_types_import`), **then** blocks that use them.
-8. **Blocks** — FB shells (`tia_fb_create`) + instance DBs (`tia_instancedb_create`);
-   logic via `tia_source_put` (SCL) or `tia_import_xml` (LAD/FBD/GRAPH). Gd6 format routing.
+8. **Blocks** — the FB comes with its logic: `tia_source_put` (SCL) or `tia_import_xml` (LAD/FBD/GRAPH), Gd6 format
+   routing (`tia_fb_create` only makes an empty FB shell); then its instance DB (`tia_instancedb_create`).
 9. **Compile** (`tia_compile`) — the verifier; only `Error` blocks. It compiles the **software**
    scope (not just the CPU device item), so it makes freshly-generated blocks consistent and, in
    most cases, **regenerates** any instance DB left inconsistent by an FB interface change.

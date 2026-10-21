@@ -216,13 +216,13 @@ Stages in order — the class tells you what each stage may do:
 
 | # | Stage | Tool(s) | Class | What it does |
 |---|---|---|---|---|
-| 0 | Validate the spec | `tia_spec_validate` | R (pure) | JSON-Schema + cross-field engineering rules (unique names, same-subnet IPs, Gd5 order-number format, per-CPU module limits, language-by-family, the G5 safety rule). Needs no serve. |
+| 0 | Validate the spec | `tia_spec_validate` | R (pure) | Partial shape checks + the cross-field rules the tool implements: unique names, IP inside the subnet CIDR, Gd5 order-number format, no STL/GRAPH on S7-1200, the G5 safety rule, at most 8 SMs on an S7-1200. It does NOT run the JSON Schema or per-model module limits; the `spec-validate` skill covers both. Needs no serve. |
 | 1 | Plan | `tia_spec_plan` | R (pure) | Turns a VALID spec into the ordered list of M-off operations. Nothing mutates. |
-| 2 | Scaffold | `tia_spec_apply` (or the M-off tools manually) | M-off | Creates the project content in dependency order (see below). Stops at every gate. |
+| 2 | Scaffold | `tia_spec_apply` (or the M-off tools manually) | M-off | Creates part of the project content in dependency order (scope below). Stops at every gate. |
 | 3 | Verify | `tia_compile` | M-off | THE offline verifier: aggregates hardware + software. Gd8: only ERRORs block. `errors:0` is the Gd9 precondition for any deploy. |
 | 4 | Handoff / deploy | `tia_download` | GATE G3 | `dryRun:true` asks serve for a VERIFIED plan (clean compile, resolved connection, software fingerprint) → plan + `planHash` → a HUMAN approves → re-call with `approved:true` + the SAME `planHash` (serve re-checks the fingerprint and refuses `plan_stale` if the software changed). The approval covers the connection/options and the covered software content — NOT the hardware configuration (a hardware change after approval passes the token check). Re-plan (new dryRun) + fresh human approval only when the hardware configuration changed AFTER the dryRun that produced the token — the fingerprint cannot detect that change, so the human must confirm nothing hardware-side moved; never reuse the old token for changed hardware. The fingerprint covers only user program blocks, UDTs and tag tables (what it leaves out, the `source:"dates"` fallback: `tia_guide {"topic":"recipes"}`, 'Reference — download plan fingerprint limits'). Never self-approve. Pick the connection with `tia_pg_interfaces` (no scan). |
 
-Scaffold order (UDTs BEFORE the blocks that use them): `tia_spec_apply` follows it; by hand, `tia_guide {"topic":"recipes"}`, 'Pipeline order'.
+Scaffold order (UDTs BEFORE the blocks that use them): by hand, `tia_guide {"topic":"recipes"}`, 'Pipeline order'. `tia_spec_apply` automates only subnets, devices, modules, network, tag tables, tags, FB shells, control-module instance DBs and the compile; protection, constants, UDTs and all logic stay manual. The FB shells it creates are empty: add their logic with `tia_source_put` (SCL) or `tia_import_xml` (LAD/FBD).
 
 PLC-scoped steps use the PlcSoftware (e.g. `PLC_1`) read after the device step, not the device name.
 
@@ -332,11 +332,11 @@ A project-spec is ONE JSON document describing the whole project. Always run it
 through the pipeline front door: `tia_spec_validate` (rung 0, pure) → `tia_spec_plan`
 (dry) → `tia_spec_apply` (M-off, stops at gates).
 
-Rules the validator enforces (beyond the JSON Schema): unique device/tag/block names;
-every network node IP inside the subnet CIDR (same-subnet rule); `OrderNumber:<MLFB>/V<fw>`
-format with `/V` — never `:V` (Gd5); per-CPU module limits; language by family (e.g.
-S7-1200 has no GRAPH); and the G5 rule — a spec with safety content marked autonomous
-is REJECTED (F-logic is never autonomous).
+`tia_spec_validate` checks the shape only in part (it does not run the JSON Schema; the `spec-validate`
+skill adds it) and enforces: unique device/subnet/UDT/block/per-table tag names; every network node IP
+inside the subnet CIDR; `OrderNumber:<MLFB>/V<fw>` with `/V` — never `:V` (Gd5); no STL/GRAPH on an
+S7-1200; at most 8 SMs on an S7-1200 (its only module limit); and G5 — a spec with safety content
+marked autonomous is REJECTED (F-logic is never autonomous).
 
 Minimal example:
 
@@ -374,6 +374,9 @@ Minimal example:
   "tags": [{ "table": "IO", "name": "Conv01_Run", "dataType": "Bool", "address": "%Q0.0" }]
 }
 ```
+
+The plan and `tia_spec_apply` neither import `dataTypes` nor author block logic: UDTs go in with
+`tia_types_import`, logic with `tia_source_put` / `tia_import_xml`.
 
 Resolve every concrete MLFB + firmware via `tia_catalog` before building — never guess
 an order number. Project firmware must be ≤ the physical device's firmware.
