@@ -31,8 +31,12 @@ the restorable artifact.
 - The CPU's IP is known.
 - The PG/PC adapter/mode names: discover them with `tia_pg_interfaces` on the working
   project's PLC **before** switching projects (the adapter list is host-wide), or call
-  `tia_upload` without confirm and with a `connectionMode` from the plan's `connection.mode.available`:
-  the plan lists the PG/PC interfaces of the requested mode only, none when no mode is given (#192).
+  `tia_upload` without confirm. Without a `connectionMode` the plan stays `plan_blocked` (`connection_unresolved`)
+  and, when serve reports any, lists in `connectionCandidates` the `{connectionMode, pcInterfaceName,
+  pcInterfaceNumber}` of each available mode (up to 8 modes, 32 candidates; #192). An empty
+  `connection.pcInterface.available` there does NOT mean the host has no adapter. Repeat `tia_upload` without
+  confirm with one candidate's exact fields, then relay the G4 handoff. Without `connectionCandidates`, repeat it
+  without confirm with a `connectionMode` from `connection.mode.available`.
 
 ## Procedure (in order)
 
