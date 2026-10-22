@@ -84,7 +84,10 @@ PROCEDURE (in order):
 7. **The other gates.** G4 go-online and G7 scan: call `tia_online` / `tia_accessible_devices` once
    WITHOUT `confirm` — it returns the `requires_human_action` handoff and touches nothing; relay it
    verbatim and STOP. Only after the human's explicit yes, repeat the same call with
-   `confirm:true` (there is no token: the human's yes is the approval). G6: `tia_mastersecret_set`
+   `confirm:true` (there is no token: the human's yes is the approval). For `tia_online` that call
+   must repeat the SAME `connectionMode`, `pcInterfaceName`, `pcInterfaceNumber` and `targetInterfaceName` as the
+   handoff's `plan`: without `connectionMode` or `pcInterfaceName` it is refused (`connection_fields_required`) and
+   nothing is sent. G6: `tia_mastersecret_set`
    and the `umac*` fields of `tia_connect` take only a secret the human typed; so do the passwords of
    `tia_block_protect` and `tia_certificate_import`, and `tia_password_policy_set` takes only values
    the human decided. A station upload (G4)
