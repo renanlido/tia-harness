@@ -30,8 +30,9 @@ the restorable artifact.
 - The license has the `deploy` scope (`tia_upload`, the G4 step, is deploy-class).
 - The CPU's IP is known.
 - The PG/PC adapter/mode names: discover them with `tia_pg_interfaces` on the working
-  project's PLC **before** switching projects (the adapter list is host-wide), or read them
-  from the upload plan's `available` lists.
+  project's PLC **before** switching projects (the adapter list is host-wide), or call
+  `tia_upload` without confirm and with a `connectionMode` from the plan's `connection.mode.available`:
+  the plan lists the PG/PC interfaces of the requested mode only, none when no mode is given (#192).
 
 ## Procedure (in order)
 
