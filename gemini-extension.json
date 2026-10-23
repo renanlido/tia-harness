@@ -1,6 +1,6 @@
 {
   "name": "tia-harness",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Siemens TIA Portal V21 automation harness: the `tia` MCP server (Openness over the PLCWare serve API), the skills and the operating guide (gates, guards, gotchas).",
   "contextFileName": "gemini/GEMINI.md",
   "mcpServers": {

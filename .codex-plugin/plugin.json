@@ -1,6 +1,6 @@
 {
   "name": "tia-harness",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Siemens TIA Portal V21 automation harness for Codex: the `tia` MCP server and the specialist skills (spec validation, CPU selection, planning, review, scaffold, verify, gated handoff).",
   "author": {
     "name": "renanlido",

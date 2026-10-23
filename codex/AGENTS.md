@@ -66,9 +66,8 @@ commissioner.
 6. **Some CPU settings are GUI-only** (PUT/GET permission, OPC UA runtime license,
    OPC UA server interface). Hitting one is EXPECTED, not a bug: relay the exact GUI
    steps from `tia_guide {"topic":"gui-gates"}` and resume after the human confirms.
-7. **Prerequisites:** the serve must be running (default `http://localhost:5000` —
-   check with `tia_ping`); the FIRST connect per serve process hits the G1 trust dialog
-   on the serve host.
+7. **Prerequisites:** run the serve (`http://localhost:5000`; `tia_ping`). First
+   connect per process may need G1; running/timeout alone are not G1 evidence.
 8. **Confirmation dialogs.** Where the client supports it, a gated call first asks the human in the client's dialog
    (elicitation); only the human answers it, and it never replaces dryRun → approval → `planHash`. `declined_by_human` /
    `cancelled_by_human` = refused, nothing sent: stop, no retry unless asked.
@@ -133,7 +132,7 @@ tell the human the **exact GUI steps**, and resume after they confirm. A GUI gat
 
 | # | Signal you'll see | Why it's expected | Tell the human (exact GUI steps) |
 |---|---|---|---|
-| **G1 trust** | `tia_connect` → `requires_human_action` (`trust_dialog`), or the **1st** TIA-starting call per `serve` process goes **~180 s** (`TIA_CONNECT_TIMEOUT_MS`) without an answer — `tia_connect`, `tia_start`, `tia_show_ui` and `tia_project_create` all share that wait, and a client timeout with `/health` alive yields the same `trust_dialog` handoff. A `running` answer from any of them can still mean a trust dialog is waiting on the serve host | TIA shows a one-time security prompt the first time an Openness app attaches, **per process** | On the **serve host**, in TIA Portal, click **"Yes to all"** in the access dialog. *Caveat:* it can false-positive on a client timeout with **no** real dialog — check `tia_status` (**`hasProject:true`**, not `attached:true`) and… If the handoff state is `TRUST_DIALOG_DENIED_OR_EXPIRED`, the dialog was denied or left to expire: the serve lists what it closed (`closedPids`), what is still running (`stillRunningPids`) and what it could not confirm (`unknownPids`) — close any still-running TIA (no project inside) before re-calling, and for an unconfirmed pid first verify in Task Manager that it is a TIA Portal started by this serve with no open project, with a human ready to click **"Yes to all"**. |
+| **G1 trust** | `tia_connect` returns `requires_human_action` (`trust_dialog`) only for `EngineeringSecurityException`; a failed start with `details.cause:"trust"` is also explicit G1 evidence. `running` is not G1: the operation may still be starting or waiting for a dialog. A 20-minute timeout without evidence returns the error state `STARTING_UNCONFIRMED`, not success or G1. | TIA shows a one-time security prompt the first time an Openness app attaches, **per process** | On the **serve host**, click **"Yes to all"** only if the trust dialog is visible. For a `running` lifecycle job, follow its conditional hint and keep polling `tia_job_status`. A timeout does not cancel the operation; the serial worker may remain occupied. Do not queue serve calls. Ask a human to inspect the host; confirm G1 only if a dialog is visible. Wait for completion before status checks or retry. After a G1 handoff, confirm the dialog and re-call `tia_connect` with the `resumeToken`. For `TRUST_DIALOG_DENIED_OR_EXPIRED`, the serve lists what it closed (`closedPids`), what is still running (`stillRunningPids`) and what it could not confirm (`unknownPids`) — close any still-running TIA (no project inside) before re-calling, and for an unconfirmed pid first verify in Task Manager that it is a TIA Portal started by this serve with no open project, with a human ready to click **"Yes to all"**. |
 | **OPC UA license** | `tia_compile` **ERROR**: *"The selected OPC UA license is not sufficient…"* | License selection is GUI-only (no Openness service); a fresh project **or a firmware change** leaves it unset | CPU → **Properties → General → Runtime licenses → OPC UA** → *Type of required license* → select **"SIMATIC OPC UA S7-1200 Basic"** (the 1214C option), and *Type of purchased license* → the license the CPU holds (the human declares it; left at "No license" the compile still reports *"Type of purchased license: The selected OPC UA license is not sufficient"*). Recompile. |
 | **OPC UA interface** | OPC UA client connects but the DB nodes aren't there (`ns=4` empty / no `ServerInterfaces`) | The **S7-1200 does NOT auto-expose DBs** (unlike the S7-1500) — a server interface must be created by hand | CPU → **OPC UA → Server interfaces → Add new server interface** → add/drag the DB (e.g. `ModbusData`) into it. Recompile; data appears under `ns=4`. |
 | **PUT/GET** | S7 client (`nodes7`/`snap7`) connects on port 102 but reads return access-denied (`ROSCTR=2` / "BAD") | *"Permit access with PUT/GET"* is a GUI-only protection setting | CPU → **Properties → Protection & Security → Connection mechanisms** → check **"Permit access with PUT/GET communication from remote partner"**. Compile + download (`hardware:true`). |
@@ -205,8 +204,7 @@ on the "OPC UA" device-item (it auto-generates the server certificate). Only the
   `TIAOpenness.exe serve 5000`). The MCP is a pure HTTP client; point it at the serve host via
   `TIA_API_BASE` if it runs elsewhere.
 - The Windows user must belong to the **"Siemens TIA Openness"** local group.
-- The **FIRST connection per serve process shows a trust dialog** that a **human must confirm**
-  ("Yes to all") on the serve host — this **cannot be automated** (gate G1).
+- A first connection per serve process may show a trust dialog; a human confirms it on the serve host. A slow start or timeout alone is not G1 evidence.
 
 ---
 

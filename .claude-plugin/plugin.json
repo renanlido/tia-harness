@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin.json",
   "name": "tia-harness",
   "displayName": "TIA Portal Automation Harness",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Industrial-automation + Siemens TIA Portal V21 specialist harness for Claude Code. Turns a structured engineering project-spec into a compliant-by-construction, verifiable TIA project, driving the `tia` MCP server over the Openness HTTP API. Ships deterministic, MCP-free skills (spec-validate, cpu-select) that deliver value offline, plus subagents and domain guardrails.",
   "author": {
     "name": "renanlido",
@@ -31,8 +31,8 @@
   ],
   "mcpServers": {
     "tia": {
-      "command": "npx",
-      "args": ["-y", "@renanlido/tia-openness-mcp"],
+      "command": "${user_config.tia_mcp_command}",
+      "args": ["${user_config.tia_mcp_arg0}", "@renanlido/tia-openness-mcp"],
       "env": {
         "TIA_API_BASE": "${user_config.tia_api_base}",
         "TIA_MCP_MODE": "${user_config.tia_mcp_mode}"
@@ -51,6 +51,18 @@
       "title": "MCP mode",
       "description": "full (default) registers every tool. read-only registers only the read tools, so the agent cannot change the project or the PLC; it needs the MCP release that includes read-only mode (older releases ignore it). Any other value stops the MCP from starting.",
       "default": "full"
+    },
+    "tia_mcp_command": {
+      "type": "string",
+      "title": "MCP command",
+      "description": "Launch command for the MCP server. The default npx command keeps the plugin usable on macOS, Linux, and remote hosts; the Windows app sets its bundled Node.js path when available.",
+      "default": "npx"
+    },
+    "tia_mcp_arg0": {
+      "type": "string",
+      "title": "MCP first argument",
+      "description": "First argument to the MCP server launcher. The default keeps the plugin on npx; the Windows app sets the embedded server entry point when available.",
+      "default": "-y"
     }
   }
 }

@@ -22,12 +22,17 @@ In Claude Code:
 /reload-plugins
 ```
 
-Installing **auto-registers the bundled `tia` MCP server** (it runs
-`npx -y @renanlido/tia-openness-mcp`) — so you need **Node 20+** on PATH and the npm package
-**published**. Installing asks for the **PLCWare API URL** (the `serve` host; default
-`http://localhost:5000`, use `http://<vm-ip>:5000` if `serve` runs elsewhere) — see
-[Setting the serve URL](#setting-the-serve-url). The two pure R skills (`spec-validate`, `cpu-select`)
-work even before the MCP / `serve` are up.
+Installing **auto-registers the bundled `tia` MCP server**. Its default launch is
+`npx -y @renanlido/tia-openness-mcp`, which requires **Node 20+** on PATH and the npm package
+to be **published**. When the Windows app's AI agents screen installs this plugin, it sets
+`tia_mcp_command` and `tia_mcp_arg0` to the installer's `mcp\node.exe` and
+`mcp\server\index.mjs`; that route needs no system Node.js, npm, or npm registry. Existing
+plugin installations are not rewritten automatically; disconnect and reconnect through the
+app to switch an app-managed connection to the embedded runtime. Manual installs and
+macOS/Linux/remote hosts keep the `npx` defaults. Installing asks for the **PLCWare API URL**
+(the `serve` host; default `http://localhost:5000`, use `http://<vm-ip>:5000` if `serve`
+runs elsewhere) — see [Setting the serve URL](#setting-the-serve-url). The two pure R skills
+(`spec-validate`, `cpu-select`) work even before the MCP / `serve` are up.
 
 **Alternative, once published: the guided setup.** `npx @renanlido/plcware-setup` connects Claude Code, and also Claude
 Desktop, Codex, Gemini CLI, Cursor and VS Code, in one run and **without the plugin**: for Claude Code it adds the `tia`
@@ -150,23 +155,40 @@ via the plugin, nothing changes for that setup.
 ```jsonc
 "mcpServers": {
   "tia": {
-    "command": "npx",                                    // downloads and runs the published MCP package
-    "args": ["-y", "@renanlido/tia-openness-mcp"],
-    "env": { "TIA_API_BASE": "${user_config.tia_api_base}" }
+    "command": "${user_config.tia_mcp_command}",
+    "args": ["${user_config.tia_mcp_arg0}", "@renanlido/tia-openness-mcp"],
+    "env": {
+      "TIA_API_BASE": "${user_config.tia_api_base}",
+      "TIA_MCP_MODE": "${user_config.tia_mcp_mode}"
+    }
   }
 },
 "userConfig": {
   "tia_api_base": {
     "type": "string",
-    "title": "PLCWare API URL",
-    "description": "URL of the serve API that drives TIA Portal. ...",
     "default": "http://localhost:5000"
+  },
+  "tia_mcp_mode": {
+    "type": "string",
+    "default": "full"
+  },
+  "tia_mcp_command": {
+    "type": "string",
+    "default": "npx"
+  },
+  "tia_mcp_arg0": {
+    "type": "string",
+    "default": "-y"
   }
 }
 ```
+The Windows app sets `tia_mcp_command` and `tia_mcp_arg0` when it installs the plugin so the server runs from the
+embedded runtime. The second argument remains the package name for the `npx` default; the MCP entry point ignores it
+when launched directly by Node.js.
 
-- `npx -y @renanlido/tia-openness-mcp` runs the published MCP package (`mcp/`); nothing is installed globally and Node 20+
-  must be on PATH. Adjust `command`/`args` only to use your own install of the package.
+- The default `npx -y @renanlido/tia-openness-mcp` runs the published package (`mcp/`) and requires Node 20+ on PATH.
+- On Windows, the app supplies the embedded Node command and server entry point on a fresh plugin install. Existing
+  plugin settings are not rewritten; use Disconnect, then Connect in the app for an app-managed connection.
 - `TIA_API_BASE` (filled from `userConfig`) points the MCP (a **pure HTTP client**) at the `serve` API host. The
   canonical topology is "MCP on your laptop → `serve` on a Windows host/VM with TIA".
 - **Auth:** there is **no Bearer token** in this config. API access is gated by the
@@ -215,9 +237,9 @@ following **explicit assumptions**, structured cleanly so they are easy to adjus
    replaces the default `agents/` scan). The root `agents/*.md` are the **Gemini CLI** copies, which a
    Gemini extension must read from there; their `tools` is a YAML array of Gemini names, so they are
    generated (`cd mcp && npm run sync`) and never edited by hand. Edit only `agents/claude/`.
-4. **MCP server config** reuses the root `.mcp.json` idea (`command: npx`,
-   `args: ["-y", "@renanlido/tia-openness-mcp"]`, `env.TIA_API_BASE` filled from `userConfig`). No secrets are embedded; license/activation lives on the `serve`
-   host.
+4. **MCP server config** uses `userConfig` for the command and first argument (defaults `npx` and `-y`), while
+   `TIA_API_BASE` and `TIA_MCP_MODE` set the server's API URL and mode. The Windows app may override the launch values
+   with its embedded runtime; no secrets are embedded, and license/activation lives on the `serve` host.
 5. **Determinism boundary:** `spec-validate` and `cpu-select` are **class R** and must
    never call the MCP/open TIA. Anything needing the live catalog or the project model is
    deferred to the MCP-backed flows (M1+), surfaced as a hint, not performed in the R
