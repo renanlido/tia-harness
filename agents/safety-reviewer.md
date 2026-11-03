@@ -31,10 +31,11 @@ Two rules are absolute here: **serial-only** — the serve is ONE serial worker,
 fire concurrent `tia_*` calls (the main loop also never dispatches two MCP-touching
 agents in parallel); and **gates are for humans** — this agent has no lifecycle/gated
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
-This agent has no long tool of its own, but ANY call can still answer `kind:"busy"` while
-another job (e.g. a main-loop `tia_compile`/`tia_download`) holds the serve: call
-`tia_job_status {jobId}` on its `details.jobId` and wait, then retry — never poll
-`tia_status` meanwhile.
+ANY call can answer `kind:"busy"` while serve is occupied. Only for a running job whose
+`jobId` is known (e.g. `details.jobId`), wait with `tia_job_status {jobId}`, then retry
+the rejected call — never poll `tia_status` during that job.
+Without a known running job ID, wait/recheck with `tia_status`; for `connect_incomplete`,
+follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect.
 
 ## Role
 

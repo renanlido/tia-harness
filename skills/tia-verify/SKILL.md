@@ -24,13 +24,13 @@ read independent of the compile; the human signs the FAT/SAT record, the skill n
 
 ## Errors and reporting
 
-- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means a job is still running: poll `tia_job_status` with the `jobId` you hold, or wait and ping again. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
+- First call `tia_ping`: require `reachable:true` and `activated:true`. `activated:null` with a busy `detail`: use the job/no-job rule below. Otherwise stop, quote `detail`/`hint` verbatim and say nothing changed (`tia_guide {"topic":"gotchas"}`).
 - If no `tia_*` tool is available, the `tia` MCP is not connected: say so and stop. Never continue from memory and never work around it with hand-made HTTP calls (they bypass the MCP's gate checks).
 - On a tool error (`isError:true`), quote its `error` and `kind` verbatim, relay its `hint`, and state what was done and what was not. Apply only the remedy the hint or this skill names, at most once; otherwise stop and ask.
 - Never report success after an error, never retry a refused call with changed arguments, and never cross a human gate: relay a `requires_human_action` answer verbatim and wait for the human.
-- `status:"running"` or `kind:"busy"` is not a failure: poll `tia_job_status {jobId}`. After a `timeout`, check the state before repeating anything.
+- Poll `tia_job_status {jobId}` for `status:"running"` + `jobId`, or `kind:"busy"` only for a running job whose ID is known (e.g. `details.jobId`). Never repeat a running call. Without an ID, wait/recheck with `tia_status`; `connect_incomplete` → host-inspection handoff (`tia_guide {"topic":"gui-gates"}`), never retry connect. After timeout, check state first.
 - This skill names these remedies for `tia_io_map` (step 6): a `409` `cursor_stale` answer, or `coverage` that differs between pages (restart the page walk from the first page, once for each); and a page that arrives with an omission marker (repeat that page with a smaller `limit`, at most three times). Every other tool error stops the I/O list as above: report it as NOT complete, or as *not done* when no page was read.
-- For the `status:"running"` and `kind:"busy"` answers of `tia_io_map`, step 6 says which job to poll and what to do next; the bullet above applies to every other call.
+- Step 6 distinguishes `tia_io_map` jobs from rejected reads; the job/no-job rule applies everywhere.
 
 ## Preconditions
 
@@ -135,11 +135,11 @@ read independent of the compile; the human signs the FAT/SAT record, the skill n
    between pages means the workspace changed during the walk, so restart it once from the first page,
    without `cursor`, like `cursor_stale`; if it differs again, treat the rung as not complete.
    `status:"running"` + `jobId` identifies this request: poll `tia_job_status {jobId}` until the final
-   result and never repeat the call. `kind:"busy"` means another job holds the serve and this request
-   did not run: wait for that job with `tia_job_status` using the `jobId` from `details.jobId`, discard
-   its result for this request, then repeat the same call once with unchanged arguments; if it is
-   `busy` again, stop the walk and treat the rung as not complete. A page where `objects` is replaced
-   by an object with `omitted:true` (an omission marker) was too large and has no `nextCursor`: repeat
+   result and never repeat the call. `kind:"busy"` means this request did not run: only for a
+   running job whose `jobId` is known (e.g. `details.jobId`), wait with `tia_job_status {jobId}`,
+   discard its result, then retry this call once unchanged; a second `busy` makes the rung not complete.
+   Without that ID, stop as not complete and use the no-job handoff above.
+   A page where `objects` is replaced by an object with `omitted:true` (an omission marker) was too large and has no `nextCursor`: repeat
    that same call with a smaller `limit`, at most three times; never follow a cursor from an omitted
    page, it would skip what the marker replaced.
 
@@ -162,11 +162,11 @@ read independent of the compile; the human signs the FAT/SAT record, the skill n
      still differs, the list is NOT complete.
    - **Answers that are not failures and differ.** (a) `status:"running"` + `jobId` identifies this request: poll
      `tia_job_status {jobId}` until the final result and never repeat the call; after a `timeout`, check the state
-     (`tia_status`) before repeating. (b) `kind:"busy"` means another job holds the serve and this request did not
-     run: wait for that job with `tia_job_status` using the `jobId` from `details.jobId`, do not use its result for
-     this list, then repeat the same call once with unchanged arguments; if it is `busy` again, stop the walk and
-     treat the list as NOT complete (or *not done* when no page was read). (c) `409` `cursor_stale` means the project
-     changed during the walk: restart from the first page, without `cursor`, once; if it is stale again, stop the
+     (`tia_status`) before repeating. (b) `kind:"busy"` means this request did not run: only for a
+     running job whose `jobId` is known (e.g. `details.jobId`), wait with `tia_job_status {jobId}`,
+     discard its result, then retry this call once unchanged; a second `busy` stops the walk as NOT complete
+     (or not done if no page was read). Without that ID, stop likewise and use the no-job handoff above.
+     (c) `409` `cursor_stale` means the project changed during the walk: restart from the first page, without `cursor`, once; if it is stale again, stop the
      walk and treat the list as NOT complete. (d) A page with an omission marker (`omitted:true`, usually in place of
      `entries`) was too large and carries no `nextCursor`: repeat that same call, with the same `cursor` (or none for
      the first page) and a smaller `limit`, for example half of the last one, at most three times, and follow a

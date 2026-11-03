@@ -28,6 +28,7 @@ uniform naming scheme (PLCopen default).
   graphical (LAD/FBD/GRAPH) via SimaticML **XML**; import **UDTs before** dependent
   blocks; delete the target file before export; never touch know-how-protected or
   system/F blocks.
+- **TIA version and XML format:** read `tia_guide` recipes, 'TIA version evidence and SimaticML'. App 1.8.0 ships the V21 baseline only; API `minVersion` evidence is not legacy runtime acceptance. Generate LAD/FBD/UDT XML from a real export for the selected host/API, preserving its version and schema namespaces; never down-convert by rewriting markers. V21 import behavior remains unchanged. Relay any legacy `feature_unsupported_in_version` with its host/API/minimum/reason, never work around it with generic calls or delete/recreate.
 - **Compliant-by-construction:** generate optimized + symbolic + UDT-typed; do not rely
   on model memory. Not idempotent: check by **name** what already exists before creating
   (idempotency is advisory; a re-run does not converge).

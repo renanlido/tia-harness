@@ -95,6 +95,11 @@ codex mcp list
 From a local checkout (or any directory laid out like this repo) use its path instead of `renanlido/tia-harness` in
 step 1: `codex plugin marketplace add C:\path\to\checkout`.
 
+The published plugin's [`mcp.json`](mcp.json) carries the exact MCP version tested for that harness release,
+not npm latest. The app and guided setup use their own build's reviewed pin; an older app can still install a newer
+public harness. Manual unversioned `npx` commands below intentionally follow npm latest. To use the plugin's tested
+release by hand, append `@<tested-version>` from its installed `codex/mcp.json` instead.
+
 The MCP talks to the `serve` API at `http://localhost:5000` by default. For a `serve` on another host, two routes, both
 **unproven at runtime** (they need a model session): set `TIA_API_BASE` in your user environment (the plugin forwards it, as the
 Codex docs describe for `env_vars`), or define the same server yourself, which `codex mcp list` shows in place of the
@@ -108,7 +113,7 @@ codex mcp add tia --env TIA_API_BASE=http://<host>:5000 -- npx -y @renanlido/tia
 Run `codex` after that and check `/mcp`.
 The plugin's MCP entry waits up to 90 s for the first `npx -y` download; `codex mcp add` has no timeout flag and Codex's
 default is 10 s, so if the server times out on its first start add `startup_timeout_sec = 90` under
-`[mcp_servers.tia]` in `config.toml`, or run `npx -y @renanlido/tia-openness-mcp` once in a terminal to warm the cache.
+`[mcp_servers.tia]` in `config.toml`, or run `npx -y <exact-package-coordinate>` once using the package and version in the installed plugin's `codex/mcp.json`. Warming the bare package name does not necessarily cache that pinned release.
 The plugin's entry also sets `tool_timeout_sec = 150`: Codex gives up on a call after 60 s by default, and catalog and
 authoring calls may take 120 s without becoming jobs (a Codex timeout there reports a failure while serve is still
 working). It is the documented key of `config.toml`; that the plugin's MCP file honours it is not measured yet. With
@@ -123,12 +128,12 @@ cmd (Git Bash rewrites `/c` into `C:/`).
 
 ## The operating guide
 
-The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 63 KB. Codex stops reading instructions at
+The full guide (gates vs guards, GUI-gate table, gotchas, recipes) is about 67 KB. Codex stops reading instructions at
 `project_doc_max_bytes` (32 KiB by default; the AGENTS.md docs describe it for the combined project instructions, and the global file is read first), so it is not
 installed globally and never overwrites `~/.codex/AGENTS.md`. Use one of:
 
 - **Ask for it per project:** in a project, tell Codex to run the `tia-init` skill. It writes the Codex-sized guide (about
-  28 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
+  29 KB, the `codex` topic of `tia_guide`, on an MCP that offers that topic; on one that does not, the skill falls back to the
   plugin's copy; the recipes stay one `tia_guide` call away) between
   `<!-- tia-harness:start -->` and `<!-- tia-harness:end -->` in that project's `AGENTS.md`, touching nothing outside
   the markers, and re-running only refreshes the block. If the project's own `AGENTS.md` is large, raise the limit

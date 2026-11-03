@@ -27,11 +27,11 @@ nothing references (**unused-object candidates**, from the cross-references): a 
 
 ## Errors and reporting
 
-- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means a job is still running: poll `tia_job_status` with the `jobId` you hold, or wait and ping again. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
+- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means serve is occupied, not necessarily by an MCP job: poll `tia_job_status` only for a running job whose `jobId` is known. Without one, wait/recheck with `tia_status`; for `connect_incomplete`, follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
 - If no `tia_*` tool is available, the `tia` MCP is not connected: say so and stop. Never continue from memory and never work around it with hand-made HTTP calls (they bypass the MCP's gate checks).
 - On a tool error (`isError:true`), quote its `error` and `kind` verbatim, relay its `hint`, and state what was done and what was not. Apply only the remedy the hint or this skill names, at most once; otherwise stop and ask.
 - Never report success after an error, never retry a refused call with changed arguments, and never cross a human gate: relay a `requires_human_action` answer verbatim and wait for the human.
-- `status:"running"` or `kind:"busy"` is not a failure: poll `tia_job_status {jobId}`. After a `timeout`, check the state before repeating anything.
+- `status:"running"` + `jobId` identifies a running job: poll `tia_job_status {jobId}` without repeating the original call. On `kind:"busy"`, poll only for a running job whose `jobId` is known (e.g. `details.jobId`); without one, wait/recheck with `tia_status`. For `connect_incomplete`, follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect. After a `timeout`, check the state before repeating anything.
 - This skill names these remedies for `tia_crossrefs` (step 5): a `409` `crossrefs_unavailable` answer (quote its `error`, `kind` and `hint`, report the `Unused objects` section as not done, and finish the rest of the review); a `409` `cursor_stale` answer, or `coverage` counts that differ between pages (restart the page walk from the first page, once for each); and a page that arrives with an omission marker (repeat that page with a smaller `limit`, at most three times). Every other tool error stops the review as above.
 - For the `status:"running"` and `kind:"busy"` answers of `tia_crossrefs`, step 5 says which job to poll and what to do next; the bullet above applies to every other call.
 
@@ -64,7 +64,8 @@ nothing references (**unused-object candidates**, from the cross-references): a 
   the PLC's cross-references, here only the objects nothing references, in pages of `limit` sources
   (`cursor` takes the `nextCursor` of the previous page), and feeds the `Unused objects` section
   (step 5), never the baseline rules. Its `coverage`, read on every page, says how much of the PLC was queried. On a big
-  project the whole-PLC read can take minutes, and so can every page: each page re-reads the whole PLC.
+  project the first whole-PLC read can take minutes. App 1.8+ reuses the cursor walk until a serve mutation,
+  project close/switch or cursor expiry; older serves re-read the whole PLC on every page.
 - `tia_block_render {xml}` — class R, pure and offline (no serve): renders ONE SimaticML block
   export as readable pseudo-SCL (LAD/FBD networks translated, SCL rebuilt, STL/GRAPH marked not
   rendered, untranslatable or ambiguous parts marked). It is how this skill reads graphical logic; step 3 explains its notation. XML sources: the project's versioned
@@ -154,9 +155,9 @@ when `coverage` lists them. When `tia_crossrefs` is unavailable it says the sect
    cross-references in pages: `tia_crossrefs {plc, filter:"UnusedObjects", limit:200}` for the first
    page, then the same call with `cursor` set to the `nextCursor` of the page just read, passed back
    unchanged, until `nextCursor` is `null`. Keep `plc`, `filter` and `limit` the same on every page.
-   This reads the whole PLC and each page re-reads it, so every page can take minutes on a big
-   project: paging bounds the size of a response, not the time of the walk. Read `coverage` on EVERY
-   page, never only on the first: every page re-reads the PLC, so a later page can report less than an
+   App 1.8+ reuses the whole-PLC walk until a serve mutation, project close/switch or cursor expiry;
+   older serves re-read every page, which can take minutes. Read `coverage` on EVERY
+   page, never only on the first: on older serves a later page can report less than an
    earlier one. Keep `coverage.complete`, `coverage.owners`, `coverage.queried` and
    `coverage.unavailable` of each page and compare them: a page with `coverage.complete: false` or
    `coverage.unavailableOwnersTruncated: true` makes the whole section not complete even when earlier
@@ -165,12 +166,15 @@ when `coverage` lists them. When `tia_crossrefs` is unavailable it says the sect
    treat the section as not complete. Answers that are not
    failures and differ: (a) `status:"running"` + `jobId` identifies this request: poll
    `tia_job_status {jobId}` until the final result and never repeat the call; after a `timeout`,
-   check the state (`tia_status`) before repeating. (b) `kind:"busy"` means another job holds the
-   serve and this request did not run: wait for that job with `tia_job_status {jobId}` using the
-   `jobId` from `details.jobId`, do not use its result for this CLP, then repeat the same call once
+   check the state (`tia_status`) before repeating. (b) `kind:"busy"` means this request did not run.
+   Only for a running job whose `jobId` is known (e.g. `details.jobId`), wait with
+   `tia_job_status {jobId}`, do not use its result for this PLC, then repeat the same call once
    with unchanged arguments; if it is `busy` again, stop the walk and treat the section as not
-   complete (or *not done* when no page was read), with the reason. (c) `409` `cursor_stale` means the
-   project changed during the walk: restart from the first page, without `cursor`, once; if it is
+   complete (or *not done* when no page was read), with the reason.
+   Without a known running job ID, stop the walk as not complete (or not done if no page was read)
+   and wait/recheck with `tia_status`; for `connect_incomplete`, follow the host-inspection handoff
+   in `tia_guide {"topic":"gui-gates"}`, never retry connect.
+   (c) `409` `cursor_stale` means the project changed during the walk: restart from the first page, without `cursor`, once; if it is
    stale again, stop the walk and treat the section as not complete. (d) A page where `sources` is
    replaced by an object with `omitted:true` (an omission marker) was too large and carries no
    `nextCursor`: repeat that same call, with the same `cursor` (or none for the first page) and a

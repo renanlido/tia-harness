@@ -21,11 +21,11 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
 
 ## Errors and reporting
 
-- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means a job is still running: poll `tia_job_status` with the `jobId` you hold, or wait and ping again. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
+- First call `tia_ping`: continue only if it reports `reachable:true` and `activated:true`. `activated:null` with a busy `detail` means serve is occupied, not necessarily by an MCP job: poll `tia_job_status` only for a running job whose `jobId` is known. Without one, wait/recheck with `tia_status`; for `connect_incomplete`, follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect. Otherwise stop, quote its `detail` and `hint` verbatim and say that nothing was changed (prerequisites: `tia_guide {"topic":"gotchas"}`).
 - If no `tia_*` tool is available, the `tia` MCP is not connected: say so and stop. Never continue from memory and never work around it with hand-made HTTP calls (they bypass the MCP's gate checks).
 - On a tool error (`isError:true`), quote its `error` and `kind` verbatim, relay its `hint`, and state what was done and what was not. Apply only the remedy the hint or this skill names, at most once; otherwise stop and ask.
 - Never report success after an error, never retry a refused call with changed arguments, and never cross a human gate: relay a `requires_human_action` answer verbatim and wait for the human.
-- `status:"running"` or `kind:"busy"` is not a failure: poll `tia_job_status {jobId}`. After a `timeout`, check the state before repeating anything.
+- `status:"running"` + `jobId` identifies a running job: poll `tia_job_status {jobId}` without repeating the original call. On `kind:"busy"`, poll only for a running job whose `jobId` is known (e.g. `details.jobId`); without one, wait/recheck with `tia_status`. For `connect_incomplete`, follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect. After a `timeout`, check the state before repeating anything.
 
 ## When to use
 
@@ -47,11 +47,11 @@ the human must do*, the *plan + hash*, and the *exact resume call* — and then 
 
 > **Two classes of human interaction.** The table above is **approval gates** — a human *approves an
 > action* that touches the controller, network, secrets, or safety. There is a second class:
-> **GUI-config gates** — a human *clicks a setting* that TIA does **not** expose via Openness (the OPC UA
-> runtime license / server interface, PUT/GET, the first-connect trust dialog). Those surface during
-> **scaffold/verify** — e.g. a compile error *"OPC UA license is not sufficient"* is a **gate, not a bug**.
-> Don't retry them blindly; the exact GUI steps for each are in `tia_guide {"topic":"gui-gates"}`
-> (the harness guide's **"Human interaction points (GUI gates)"**).
+> **GUI-config handoffs** — fresh 1214C PUT/GET, OPC UA license selection and HR mapping need an
+> owner-prepared source; `tia_device_from_mastercopy` can inherit them into a NEW station, not grant
+> entitlement or set an arbitrary existing CPU. G1 trust confirmation remains human-only.
+> During **scaffold/verify**, do not blindly retry a missing license/interface; give the exact steps in
+> `tia_guide {"topic":"gui-gates"}` (the harness guide's **"Human interaction points (GUI gates)"**).
 
 ## Procedure (in order)
 

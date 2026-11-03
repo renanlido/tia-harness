@@ -18,7 +18,7 @@ ERRORS AND REPORTING:
 - Needs no `serve` and no TIA Portal: the `tia_*` tools named here are pure and offline, so do not call `tia_ping`. If they are not in the tool list, say so and use the fallback this skill names, or stop.
 - Report the tool's answer as returned (violations, `error`, `kind`, `hint`) and state what was done and what was not. Never fix the input silently, never retry with changed input to get past a failure, and never report success after an error.
 - The first bullet covers `tia_spec_validate` and `tia_spec_plan`. The optional `Impact on the open project` step (step 4) is the only part that reads through `serve`: only there call `tia_ping`, and only after the plan is presented. If it cannot run or fails (`serve` unreachable or not activated, no project open, `tia_crossrefs` or a read tool missing, a tool error), say `impact not read` with the reason (quote `error`, `kind` and `hint` verbatim for a tool error) and keep the plan as the answer. Never block or withdraw the plan on it, and never retry with changed arguments beyond the repeats step 4 names.
-- On the reads of step 4, `status:"running"` + `jobId` (only `tia_crossrefs` answers it) and `kind:"busy"` are not failures and are handled differently. `status:"running"` + `jobId` identifies THIS request: poll `tia_job_status {jobId}` until the final result and never repeat the call; after a `timeout`, check the state before repeating anything. `kind:"busy"` means another job holds the serve and THIS request did not run: wait for that job with `tia_job_status {jobId}`, taking the `jobId` from `details.jobId`, never use that job's result for this read, then repeat the same read once with unchanged arguments; if it answers `busy` again, say `impact not read` with the reason.
+- On the reads of step 4, `status:"running"` + `jobId` (only `tia_crossrefs` answers it) identifies THIS request: poll `tia_job_status {jobId}` until the final result and never repeat the call; after a `timeout`, check the state before repeating anything. `kind:"busy"` means THIS request did not run: only for a running job whose `jobId` is known (e.g. `details.jobId`), wait with `tia_job_status {jobId}`, never use that job's result for this read, then repeat the same read once with unchanged arguments; if it answers `busy` again, say `impact not read` with the reason. Without a known running job ID, report impact not read/complete and wait/recheck with `tia_status`; for `connect_incomplete`, follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect.
 - Also on the reads of step 4: a `409` `cursor_stale`, or `coverage` counts that differ between pages, restarts that object's page walk from the first page, once for each, and a page that arrives with an omission marker is repeated with a smaller `limit`, at most three times; step 4 says how. A read that cannot be completed is reported as `impact not complete` with the reason, never as an absence of impact.
 
 INPUT: A project-spec object (JSON) — inline below, a file path, or pasted text: {{args}}
@@ -58,11 +58,14 @@ PROCEDURE (in order):
      `coverage.unavailable` of each page and compare them.
      (a) `status:"running"` + `jobId` identifies this request: poll `tia_job_status {jobId}` until the
      final result and never repeat the call; after a `timeout`, check the state before repeating.
-     (b) `kind:"busy"` means another job holds the serve and this request did not run: wait for that
-     job with `tia_job_status {jobId}` using the `jobId` from `details.jobId`, do not use its result
-     for this object, then repeat the same call once with unchanged arguments; if it is `busy` again,
+     (b) `kind:"busy"` means this request did not run: only for a running job whose `jobId` is
+     known (e.g. `details.jobId`), wait with `tia_job_status {jobId}`, do not use its result for
+     this object, then repeat the same call once with unchanged arguments; if it is `busy` again,
      stop that object's walk and say `impact not read` (no page read) or `impact not complete` (some
-     pages read), with the reason. (c) If the result is `409` `ambiguous_target`, repeat once with the
+     pages read), with the reason. Without a known running job ID, stop that walk, report impact
+     not read/complete and wait/recheck with `tia_status`; for `connect_incomplete`, follow the
+     host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect.
+     (c) If the result is `409` `ambiguous_target`, repeat once with the
      `kind` from the candidates in its `details` that matches the step. (d) `409` `cursor_stale` means
      the project changed during the walk, and counts that differ between pages mean the same: restart
      that object from the first page, without `cursor`, once for each; if it is stale or the counts

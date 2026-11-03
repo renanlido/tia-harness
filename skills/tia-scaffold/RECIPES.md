@@ -2,6 +2,7 @@
 
 ## Contents
 
+- TIA version evidence and SimaticML
 - Pipeline order (dependency-correct)
 - Recipe — edit an existing block or type without overwriting a newer change (stale-write guard)
 - Recipe — unlock a freshly-created CPU so it compiles clean (VERIFIED V21, firmware-dependent)
@@ -18,6 +19,12 @@
 - Recipe — prove the project matches the versioned XML (tia_block_compare)
 - Reference — network, audit and CAx how-to
 - Where to stop
+
+## TIA version evidence and SimaticML
+
+Before choosing an API, read `tia_guide {"topic":"recipes"}`, 'TIA version evidence and SimaticML', for observed API `minVersion` notes and their evidence limits. App 1.8.0 ships V21 only; a metadata binding is not legacy runtime acceptance.
+
+For LAD/FBD/GRAPH and UDT XML, use a real export for the selected host/API as the template and retain its Engineering version, interface, instruction and schema namespaces. Never rewrite version markers to down-convert, infer compatibility from matching markers or treat `tia_block_render` as a converter. Import UDTs first, compile, re-export and compare on that same target. V21 import behavior and all hash contracts stay unchanged; legacy import refusals belong at the authoritative server/layer boundary, including server-local paths. Real legacy exports and cross-version import acceptance remain #213 live evidence, not synthetic fixtures.
 
 ## Pipeline order (dependency-correct)
 
@@ -180,41 +187,43 @@ Lets an external client (e.g. a Node backend) read/write the CPU over **Modbus T
 
 Lets an external S7 client (e.g. `nodes7`) read/write the CPU over **S7comm, port 102**.
 
-1. **GATE (human, GUI only):** enable PUT/GET — *Properties → Protection & Security →
-   Connection mechanisms → "Permit access with PUT/GET communication"*. **Not exposed by
-   Openness** on this CPU/FW (we tried `PlcAccessLevelProvider` — no toggle). Mark it as a
-   **human gate** and surface it in `tia-handoff`; do **not** attempt to script it.
+1. For a fresh CPU, ask the human to enable PUT/GET: *Properties → Protection & Security →
+   Connection mechanisms → "Permit access with PUT/GET communication"*. No direct setter was
+   verified on the 1214C V4.4. Alternatively, `tia_device_from_mastercopy` inherits this
+   permission from an owner-prepared station; do not script the GUI.
 2. **Non-optimized DB** for the data the client touches (PUT/GET addresses absolute offsets, so
    the DB must be byte-addressable / non-optimized).
 3. Compile + download as usual; the client then reads/writes the DB by area+offset.
 
 ## Recipe — enable **OPC UA** on the S7-1200 (port 4840)
 
-Lets an external OPC UA client read/write the CPU over **OPC UA, port 4840**. This path is the
-most gated — most of it is **human GUI steps**, not Openness.
+Lets an external OPC UA client read/write the CPU over **OPC UA, port 4840**.
+Use the manual sequence for a fresh CPU, or clone an owner-prepared station as described below.
 
 **Prerequisite — firmware ≥ V4.4.** OPC UA server isn't available on V4.0. If the project is on
 an older FW, bump it in-place first (see *bump the project firmware in-place* above —
 `ChangeType` to `.../V4.4`).
 
-Then the setup sequence. **Step 1 is scriptable; steps 2–3 are human/GUI** on this CPU/FW (for those two
-we tried `CommunicationManagement` and `OpcUaUserManagement→404`):
+For a fresh CPU, step 1 is scriptable; steps 2–3 require human configuration:
 
 1. **Activate the OPC UA server** — *Properties → OPC UA → Server* (enable). *(This step **is**
    scriptable via Openness: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}` on the "OPC UA"
-   device-item — it auto-generates the server certificate. Steps 2–3 stay GUI-only.)*
+   device-item — it auto-generates the server certificate.)*
 2. **Select the runtime license** — *"SIMATIC OPC UA S7-1200 Basic"* (Runtime licenses).
-3. **Create a server interface** that **exposes the DB** — the **S7-1200 does NOT auto-expose**
-   tags/DBs to OPC UA (unlike the S7-1500), so you must add a server interface and place the DB
-   nodes in it manually.
+3. **Create a server interface** (type **Interface**) and drop the **`ModbusData.HR` array**, not the
+   DB or separate elements. The S7-1200 does not auto-expose DBs. Browse the resulting node IDs.
 
 **Finding the node IDs (client side):** browse `ns=3;s=ServerInterfaces` with any OPC UA client;
 the actual data nodes show up under **`ns=4`**. Use those node IDs from the backend.
 
-> What Openness *can* still do here: create the DB/blocks, compile, download — **and activate the OPC UA
-> server** (step 1: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`; do NOT gate it on a human). Only **three**
-> items are truly human/GUI: the **runtime license**, the **server interface** — and **PUT/GET** in the S7
-> recipe. See `docs/TIA-Openness-Casos-de-Uso.md` §8c for the full "GUI-only gates" table.
+**Prepared-station path (V21 / 1214C V4.4):** capture the configured source with
+`tia_library_mastercopy_create`, then `tia_device_from_mastercopy {masterCopy}`. This creates a new
+station, preserving PUT/GET, selected runtime license and the HR interface; it is not an existing-CPU
+setter or a license grant. TIA may rename the new PLC. Certificates are not copied: inspect its
+"OPC UA" item; `OpcUaServer:false` then `true` regenerated the certificate in the measured clone.
+Compile, save/reopen and check the exported HR mappings before any human-gated download.
+The GUI type **Interface** is exposed as `SimaticInterface` (Export/Delete, no Import);
+`ServerInterface.Import` did not reproduce its HR mapping. See `tia_guide {"topic":"gui-gates"}`.
 
 ## Recipe — WinCC Unified HMI: read, then guarded writes
 
@@ -348,9 +357,12 @@ Lengths: a `range`'s `start` is a byte number and its `length` is in BYTES (Open
 **The project matches what's versioned — prove it, don't assume it.** A raw hash of an
 export is NOT proof (two exports of the same block differ in `<Created>`/UIds). Use
 `tia_export_block` to pull a block inline and `tia_block_compare` to diff it against the
-committed XML (normalized — ignores formatting/BOM/`<Created>`/UIds); `verdict:"equal"` is
+committed XML (normalized — ignores formatting/BOM/`<Created>`; UIds are canonically renumbered,
+preserving wiring); `verdict:"equal"` is
 the actual round-trip proof. After `tia_compile`/`tia_source_put`, read `blockChanges` and
 export/commit any regenerated instance DBs before calling the project verified.
+Comparison hashes (`normalizedSha256`) from older MCP builds that stripped UIds may change:
+recompute stored comparison baselines.
 
 ## Reference — network, audit and CAx how-to
 

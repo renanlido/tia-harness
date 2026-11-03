@@ -32,11 +32,15 @@ repo root because Gemini installs an extension from the root):
 
 | Piece | Where it comes from | Notes |
 |---|---|---|
-| MCP server `tia` | `mcpServers` in the manifest | `npx -y @renanlido/tia-openness-mcp`; env `TIA_API_BASE` defaults to localhost when the setting is empty |
+| MCP server `tia` | `mcpServers` in the manifest | `npx -y @renanlido/tia-openness-mcp@<tested-version>` (the released manifest contains the exact version); env `TIA_API_BASE` defaults to localhost when the setting is empty |
 | Skills | root [`../skills/`](../skills) | the same Agent Skills (`SKILL.md`) Claude Code uses; Gemini auto-activates them from their `description` |
 | Operating guide | `contextFileName: gemini/GEMINI.md` | loaded into every session |
 | Subagents (4) | root [`../agents/*.md`](../agents) | Gemini-format files generated from the Claude ones; see "Subagents" below |
 | Commands (`gemini/commands/*.toml`) | **not loaded** by the extension | the skills replace them; see "Migration" below |
+
+The public extension carries the MCP pin tested for its own release, not necessarily the pin of an older installed Windows
+app. Manual npx commands without a version follow npm latest; copy the exact package argument from the released manifest to
+match its tested pair.
 
 ### Alternative, once published: the guided setup
 

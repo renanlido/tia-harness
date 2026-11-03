@@ -31,14 +31,15 @@ commissioner.
    not an error: relay its `youMustDo`/`nextSteps` to the human verbatim, wait for their
    explicit yes, then resume exactly as instructed. Never self-approve a download; never
    invent a secret (G6); never author, modify or deploy safety/F logic (G5).
-3. **Long operations are jobs.** A tool whose description says "Long operation" (connect,
-   compile, download, upload, project create/save/archive, exports, CAx…) may answer `status:"running"` with a
+3. **Long operations are jobs.** Long tools (connect, compile, download, upload,
+   project create/save/archive, exports, CAx…) may answer `status:"running"` with a
    `jobId` — the operation is STILL running on serve. Call `tia_job_status {jobId}`
-   until it returns the final result; never repeat the original call. While a job runs,
-   any OTHER ordinary serve-bound tool answers `kind:"busy"` (with `details.jobId`) — that is
-   expected, not a failure: go back to `tia_job_status`. `tia_ping` probes `/health`: never busy,
-   `activated:null` while a job runs, and no job ID in it — use it for reachability only. Offline
-   tools (`tia_guide`, `tia_spec_validate`, `tia_spec_plan`, `tia_job_status` itself) never answer busy.
+   until it returns the final result; never repeat the original call. On `kind:"busy"`, poll
+   `tia_job_status` only for a running job whose `jobId` is known (e.g. `details.jobId`).
+   `tia_ping` probes `/health`: never busy, no job ID — use it for reachability only.
+   Without a known running job ID, wait/recheck with `tia_status`; for `connect_incomplete`,
+   follow the host-inspection handoff (`tia_guide {"topic":"gui-gates"}`), never retry connect.
+   Offline tools (`tia_guide`, `tia_spec_validate`, `tia_spec_plan`, `tia_job_status`) never answer busy.
 4. **Compile before deploy.** `tia_compile` aggregates hardware + software and is the
    offline verifier: `errors:0` is the Gd9 precondition for download (G3) and for S7
    connections.
@@ -46,9 +47,9 @@ commissioner.
    validate the spec (`tia_spec_validate`) → plan (`tia_spec_plan`) → scaffold
    (`tia_spec_apply` or the M-off tools) → verify (`tia_compile`) → human-gated deploy
    (`tia_download` with dryRun → human approval → `approved:true` + the same `planHash`).
-6. **Some CPU settings are GUI-only** (PUT/GET permission, OPC UA runtime license,
-   OPC UA server interface). Hitting one is EXPECTED, not a bug: relay the exact GUI
-   steps from `tia_guide {"topic":"gui-gates"}` and resume after the human confirms.
+6. **Fresh CPUs may need GUI setup** (PUT/GET, OPC UA license/interface); a prepared station can
+   inherit these via `tia_device_from_mastercopy`. Read `tia_guide {"topic":"gui-gates"}`.
+   Missing settings are human handoffs, not retryable failures.
 7. **Prerequisites:** run the serve (`http://localhost:5000`; `tia_ping`). First
    connect per process may need G1; running/timeout alone are not G1 evidence.
 8. **Confirmation dialogs.** Where the client supports it, a gated call first asks the human in the client's dialog
@@ -92,10 +93,10 @@ is the tool.
   modes/PG-PC interfaces TIA already sees for the CPU (plus the OS status of each adapter) —
   use it to fill `connectionMode`/`pcInterfaceName`/`targetInterfaceName` for `tia_download`
   instead of reaching for `tia_accessible_devices` (a real network scan, GATE G7).
-- **GUI-ONLY settings (NOT exposed via Openness — surface as a human gate, do not script):**
-  "Permit access with PUT/GET communication", OPC UA **runtime license** / server-interface
-  creation. (OPC UA server **activation** is the exception — settable via Openness with
-  `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}` on the "OPC UA" device-item.)
+- **Fresh 1214C communication settings:** PUT/GET, OPC UA license and HR interface need a
+  human source configuration; `tia_device_from_mastercopy` can inherit it into a new station.
+  Server activation is scriptable: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`.
+  Details and certificate recovery: `tia_guide {"topic":"gui-gates"}`. Never script the GUI.
 
 **Deploy-time approval gates** (download / online / network-scan / secret / safety = **G3/G4/G7/G6/G5**)
 are a *different* class — see the **`tia-handoff`** skill. Those are "a human **approves an action**",
@@ -108,22 +109,35 @@ not "a human **clicks a GUI setting**". Both are human interaction points; surfa
 
 ## Human interaction points (GUI gates) — EXPECTED, not an error
 
-Some TIA settings are **not reachable via Openness** on the S7-1200/1500. The harness will hit a
-signal that *looks* like an error but is actually a point where a **human must act in the TIA GUI**.
-When you see one of these, **do not treat it as a failure and do not retry blindly** — recognize it,
-tell the human the **exact GUI steps**, and resume after they confirm. A GUI gate is a *handoff*, not a *bug*.
+Expected handoffs include trust, fresh-CPU setup and firmware-change recovery.
+On the validated 1214C V4.4, no direct setter for PUT/GET, license selection or HR mapping was verified;
+a **prepared station master copy inherits all three**. Do not blindly retry a missing setting: give the human the exact steps.
 
 | # | Signal you'll see | Why it's expected | Tell the human (exact GUI steps) |
 |---|---|---|---|
-| **G1 trust** | `tia_connect` returns `requires_human_action` (`trust_dialog`) only for `EngineeringSecurityException`; a failed start with `details.cause:"trust"` is also explicit G1 evidence. `running` is not G1: the operation may still be starting or waiting for a dialog. A 20-minute timeout without evidence returns the error state `STARTING_UNCONFIRMED`, not success or G1. | TIA shows a one-time security prompt the first time an Openness app attaches, **per process** | On the **serve host**, click **"Yes to all"** only if the trust dialog is visible. For a `running` lifecycle job, follow its conditional hint and keep polling `tia_job_status`. A timeout does not cancel the operation; the serial worker may remain occupied. Do not queue serve calls. Ask a human to inspect the host; confirm G1 only if a dialog is visible. Wait for completion before status checks or retry. After a G1 handoff, confirm the dialog and re-call `tia_connect` with the `resumeToken`. For `TRUST_DIALOG_DENIED_OR_EXPIRED`, the serve lists what it closed (`closedPids`), what is still running (`stillRunningPids`) and what it could not confirm (`unknownPids`) — close any still-running TIA (no project inside) before re-calling, and for an unconfirmed pid first verify in Task Manager that it is a TIA Portal started by this serve with no open project, with a human ready to click **"Yes to all"**. |
-| **OPC UA license** | `tia_compile` **ERROR**: *"The selected OPC UA license is not sufficient…"* | License selection is GUI-only (no Openness service); a fresh project **or a firmware change** leaves it unset | CPU → **Properties → General → Runtime licenses → OPC UA** → *Type of required license* → select **"SIMATIC OPC UA S7-1200 Basic"** (the 1214C option), and *Type of purchased license* → the license the CPU holds (the human declares it; left at "No license" the compile still reports *"Type of purchased license: The selected OPC UA license is not sufficient"*). Recompile. |
-| **OPC UA interface** | OPC UA client connects but the DB nodes aren't there (`ns=4` empty / no `ServerInterfaces`) | The **S7-1200 does NOT auto-expose DBs** (unlike the S7-1500) — a server interface must be created by hand | CPU → **OPC UA → Server interfaces → Add new server interface** → add/drag the DB (e.g. `ModbusData`) into it. Recompile; data appears under `ns=4`. |
-| **PUT/GET** | S7 client (`nodes7`/`snap7`) connects on port 102 but reads return access-denied (`ROSCTR=2` / "BAD") | *"Permit access with PUT/GET"* is a GUI-only protection setting | CPU → **Properties → Protection & Security → Connection mechanisms** → check **"Permit access with PUT/GET communication from remote partner"**. Compile + download (`hardware:true`). |
+| **G1 trust** | `EngineeringSecurityException` or a failed start with `details.cause:"trust"` → `requires_human_action` / `trust_dialog`. Neither `running` nor the 20-minute client timeout (`STARTING_UNCONFIRMED`) proves G1 or success. | First attach may prompt **per serve process**. | Human on the **serve host**: click **"Yes to all"** only on a visible trust dialog. While a job runs, poll `tia_job_status`; do not queue calls. A timeout does not cancel it: inspect the host, wait for completion before status/retry. After explicit G1 handoff, retry with `resumeToken`. For `TRUST_DIALOG_DENIED_OR_EXPIRED`, inspect `closedPids`/`stillRunningPids`/`unknownPids`: close only verified remaining TIA started by serve **with no open project**, then retry with a human ready. |
+| **OPC UA license** | `tia_compile` **ERROR**: *"The selected OPC UA license is not sufficient…"* | No verified direct setter on this 1214C; a fresh project or firmware change can leave it unset | CPU → **Properties → General → Runtime licenses → OPC UA** → required **"SIMATIC OPC UA S7-1200 Basic"**; purchased → the license the owner declares for this CPU. Recompile. |
+| **OPC UA interface** | OPC UA client connects but the DB nodes aren't there (`ns=4` empty / no `ServerInterfaces`) | The validated **S7-1200** requires a configured server interface to expose DBs | CPU → **OPC UA communication → Server interfaces → Add new server interface** → type **Interface** → drop the **`HR` array** (`ModbusData.HR`), not the DB or individual elements. Recompile. |
+| **PUT/GET** | S7 client connects on port 102 but reads return access-denied | No verified direct setter on this 1214C | CPU → **Properties → Protection & Security → Connection mechanisms** → check **"Permit access with PUT/GET communication from remote partner"**. Compile + human-gated download (`hardware:true`). |
 | **FW-change reset** | After `tia_device_change_version`: OPC UA server off, the license error on compile, blocks `isConsistent:false` | `DeviceItem.ChangeType` **resets GUI-gated comm settings** (server activation + license); the interface & PUT/GET survive | `tia_project_archive` **before** the FW change. After: re-set `OpcUaServer:true` via `tia_obj_set_attributes` (scriptable), re-select the license (row above), recompile. |
 
-**Not a gate (now scriptable):** *activating* the OPC UA server — `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`
-on the "OPC UA" device-item (it auto-generates the server certificate). Only the **license** and the
-**server interface** stay GUI-only.
+**Bounded connect:** `connect_incomplete` / `CONNECT_UNCONFIRMED` (`serve_host_inspection`)
+names the last phase, not G1 or success. No cancellation or TIA kill: don't repeat or queue work.
+Human: inspect the host and answer pending Siemens dialogs. If none is pending and unresponsive,
+save stdout (CLI) or `%APPDATA%\TIAOpenness\startup.log` (tray, overwritten on launch),
+then restart the **process** (tray: Exit/relaunch, not API Stop/Start).
+TIA may remain running: inspect it and verify project state before reconnecting.
+A finished MCP job carrying this handoff isn't connection proof.
+
+**Prepared station:** `tia_library_mastercopy_create {device}`, then `tia_device_from_mastercopy {masterCopy}`
+clones all three settings and HR mappings. Not an existing-CPU setter or license grant.
+Certificates are not copied: on the NEW "OPC UA" item, `OpcUaServer:false` then `true` regenerated one; compile afterwards.
+GUI type **Interface** maps to `SimaticInterface` (Export, no Import).
+The separate `ServerInterface.Import` did not reproduce its HR mappings.
+
+**1214C/V21 bench, 2026-10-26:** `HR[0..2]` IDs in `ns=4`: HR array → `13,14,15`;
+individual elements → `12,23,34`; whole DB → `14,15,16`.
+Selection/order affects IDs; probe after construction/import.
 
 ---
 
@@ -133,16 +147,20 @@ on the "OPC UA" device-item (it auto-generates the server certificate). Only the
 
 1. **Always compile before deploy.** `tia_compile` aggregates **hardware + software**; a
    **clean** compile (`errors:0`) is the precondition for download and for S7 connections.
+   `tia_download` compiles too and leaves the project modified (`projectModified` in plan/result):
+   save (`tia_project_save`) before switching projects; Openness does not say what changed.
+   First download over another project's or TIA version's program: plan
+   `allowUpgradeTargetDevice:true`, or a refusal may leave the CPU stopped (the plan cannot predict it).
 2. **The serve is a SINGLE serial worker** — one Openness op at a time. Do **not** fire
    concurrent `tia_*` calls; a hung Openness op can stall the serve (may need a restart).
-3. **Changing an FB's interface (e.g. regenerating it via `tia_source_put`) leaves its
-   instance DB inconsistent.** Recompile FIRST: a software-scope `tia_compile` regenerates
-   the instance DB in most cases — read the compile result's **`blockChanges`** (`tia_compile`
-   and `tia_source_put {compile:true}` both return it): a `"change":"modified"` entry on the
-   instance DB is your confirmation it was regenerated — **export and commit it**
-   (`tia_export_block`/`tia_block_compare`) so what's versioned matches the project. Only if
-   the DB still reports inconsistent after a compile, delete it (`tia_block_delete`),
-   recreate it (`tia_instancedb_create`) and recompile.
+3. **FB edits can invalidate instance DBs.** Run software-scope `tia_compile` first;
+   a modified DB in `blockChanges` confirms regeneration: export/commit it. If still
+   inconsistent, `tia_block_delete` + `tia_instancedb_create`, then recompile.
+   **UDT/DB owner report (2026-10-31; cause unverified, bench pending):** compiles:
+   2 warnings then 0; load-memory/retain/start loss. Save DB XML/flags.
+   Inspect `changeImpact`/`readGaps` (unknown); `trackChanges:false` opts out.
+   Restore intended `IsOnlyStoredInLoadMemory` via `tia_block_set_attribute`;
+   member values from saved XML. Inspect warnings before recompiling; verify before deploy.
 4. **Firmware rule: project FW ≤ device FW.** Bump the project FW **in-place** with
    `tia_device_change_version` (`DeviceItem.ChangeType`), which preserves the **program** — never
    set the project higher than the physical CPU. **⚠️ It RESETS GUI-gated comm settings** (the
@@ -153,14 +171,14 @@ on the "OPC UA" device-item (it auto-generates the server certificate). Only the
    works with optimized or not.
 6. **Order numbers use `/V<fw>`, not `:V<fw>`** (guard Gd5).
 7. **A station upload (`tia_upload`) ADDS a new station to the open project — back up into a
-   dedicated EMPTY project.** Observed on hardware (S7-1200 1214C, 2026-09-26): the upload read
-   the CPU into an empty project (0 → 1 device, twice) in ~75 s (76.7 s and 74.2 s); the CPU
-   stayed in RUN the whole time (owner watching its LEDs during the second upload). Protect the
-   working project FIRST: `tia_project_create` closes the current project, and serve refuses it
-   (`409 unsaved_changes`) while that project has unsaved changes — so `tia_project_save` +
-   `tia_project_archive` before creating the backup project (never pass `discardUnsavedChanges` to
-   get past the refusal) — and pass the archive `name` WITH the `.zap21` extension (`name` absent
-   or extension-less fails; with `.zap21` it archived 1.6 MB).
+   dedicated EMPTY project.** Bench (S7-1200 1214C, 2026-09-26): 0 → 1 device in ~75 s, twice,
+   with the CPU in RUN throughout. Protect the working project FIRST: `tia_project_create` closes
+   it and is refused (`409 unsaved_changes`) while it has unsaved changes, so `tia_project_save` +
+   `tia_project_archive` first (never `discardUnsavedChanges` to get past the refusal), with the
+   archive `name` WITH the `.zap21` extension (absent or extension-less fails).
+   **A V17 program does not upload into V21 (2026-10-31):** use the TIA version the program was
+   made with. `upload_incompatible_version` is definite: check versions and `stationAdded` in
+   `details`; a partial station is not a backup. Approval stays single-use.
 8. **One wrong know-how password can lock a block for the session.** Observed on the bench
    (2026-10-12): after one rejected unprotect (`tia_block_protect {protect:false}`), TIA refused
    the CORRECT password of that block for the rest of the session (cause not confirmed — possibly
@@ -193,7 +211,7 @@ on the "OPC UA" device-item (it auto-generates the server certificate). Only the
 
 # The build pipeline (spec → verified project)
 
-Stages in order — the class tells you what each stage may do:
+TIA version preflight: `tia_guide {"topic":"recipes"}`, 'TIA version evidence and SimaticML', before authoring.
 
 | # | Stage | Tool(s) | Class | What it does |
 |---|---|---|---|---|
@@ -201,11 +219,19 @@ Stages in order — the class tells you what each stage may do:
 | 1 | Plan | `tia_spec_plan` | R (pure) | Turns a VALID spec into the ordered list of M-off operations. Nothing mutates. |
 | 2 | Scaffold | `tia_spec_apply` (or the M-off tools manually) | M-off | Creates part of the project content in dependency order (scope below). Stops at every gate. |
 | 3 | Verify | `tia_compile` | M-off | THE offline verifier: aggregates hardware + software. Gd8: only ERRORs block. `errors:0` is the Gd9 precondition for any deploy. |
-| 4 | Handoff / deploy | `tia_download` | GATE G3 | `dryRun:true` asks serve for a VERIFIED plan (clean compile, resolved connection, software fingerprint) → plan + `planHash` → a HUMAN approves → re-call with `approved:true` + the SAME `planHash` (serve re-checks the fingerprint and refuses `plan_stale` if the software changed). The approval covers the connection/options and the covered software content — NOT the hardware configuration (a hardware change after approval passes the token check). Re-plan (new dryRun) + fresh human approval only when the hardware configuration changed AFTER the dryRun that produced the token — the fingerprint cannot detect that change, so the human must confirm nothing hardware-side moved; never reuse the old token for changed hardware. The fingerprint covers only user program blocks, UDTs and tag tables (what it leaves out, the `source:"dates"` fallback: `tia_guide {"topic":"recipes"}`, 'Reference — download plan fingerprint limits'). Never self-approve. Pick the connection with `tia_pg_interfaces` (no scan). |
+| 4 | Handoff / deploy | `tia_download` | GATE G3 | `dryRun:true` verifies compile, connection and software fingerprint → `planHash` → HUMAN approval → `approved:true` + SAME single-use `planHash`. Serve re-checks software (`plan_stale` if changed). Approval binds connection/options and covered software, NOT hardware: humans must confirm hardware has not changed since that dryRun; changed hardware needs a NEW plan and approval, never the old token. Fingerprint covers user blocks, UDTs and tag tables only; exclusions and `source:"dates"` fallback: `tia_guide {"topic":"recipes"}`, 'Reference — download plan fingerprint limits'. Never self-approve; resolve connection via `tia_pg_interfaces` (no scan). |
+
+For the first download over another project's or another TIA version's program, plan with
+`allowUpgradeTargetDevice:true`; without it, a refusal may leave the CPU stopped.
+The offline plan cannot predict whether TIA will request that confirmation.
+
+For the first download over another project's or another TIA version's program, plan with
+`allowUpgradeTargetDevice:true`; without it, a refusal may leave the CPU stopped.
+The offline plan cannot predict whether TIA will request that confirmation.
 
 Scaffold order (UDTs BEFORE the blocks that use them): by hand, `tia_guide {"topic":"recipes"}`, 'Pipeline order'. `tia_spec_apply` automates only subnets, devices, modules, network, tag tables, tags, FB shells, control-module instance DBs and the compile; protection, constants, UDTs and all logic stay manual. The FB shells it creates are empty: add their logic with `tia_source_put` (SCL) or `tia_import_xml` (LAD/FBD).
 
-PLC-scoped steps use the PlcSoftware (e.g. `PLC_1`) read after the device step, not the device name.
+Use the PlcSoftware name from `tia_plcs`, not the device name.
 
 ## The approval envelope (what a gate handoff looks like)
 
@@ -235,22 +261,17 @@ shown or answered, nothing was sent (fails closed).
 - `tia_project_save` regularly; `tia_project_archive` BEFORE risky operations
   (firmware change — see `tia_guide {"topic":"gotchas"}`).
 - Auditing an existing project is class R (`tia_plc_*` reads); baseline: `tia_guide {"topic":"recipes"}`, 'Reference — network, audit and CAx how-to'.
-- `tia_crossrefs` (class R, a long read: it may answer `status:"running"` + `jobId`, then poll
-  `tia_job_status`) reads the cross-references: in an audit, `filter:"UnusedObjects"` lists
-  unused-object CANDIDATES, never proof (OBs, objects used only from outside the PLC such as an
-  HMI, OPC UA or another CPU, and library TYPEs show as unreferenced); before changing an
-  existing object, `target` + `kind` + `filter:"ObjectsWithReferences"` returns the objects related
-  to it with each `referenceType` and `access` as TIA reports them (the direction of `Uses` /
-  `UsedBy` is not interpreted: the human confirms it). Page a whole-PLC or container read with `limit`
-  (for example 200) and `cursor` (the `nextCursor` of the previous page, until it is null; on
-  `cursor_stale` restart from the first page, and on an omission marker repeat the same request
-  with a smaller `limit`, never following a cursor from an omitted page); each page re-reads the
-  whole PLC, so a later page can report less than an earlier one. Read `coverage` on every page,
-  not only the first, and compare its counts across pages: differing counts restart the walk once
-  from the first page (like `cursor_stale`). Only a finished walk whose pages all report
-  `coverage.complete: true` supports "audited completely" or "nothing uses this"; an omission
-  marker, an unfinished walk, differing counts or `coverage.complete: false` on any page (see
-  `coverage.unavailableOwners`) means the result is NOT complete.
+- `tia_crossrefs` (R, Long; poll `tia_job_status` for `jobId`): `UnusedObjects` returns
+  CANDIDATES, not proof (OBs, external-only uses and library TYPEs can look unused).
+  Before edits, use `target`, `kind`, `filter:"ObjectsWithReferences"`; the human interprets
+  TIA's `referenceType` (`Uses`/`UsedBy`) and `access`. Page containers/whole PLCs with
+  `limit` + unchanged `nextCursor` until null. App 1.8+ caches whole-PLC walks until mutation/close/cursor expiry;
+  older serves re-read pages. Read coverage on every page, not only the first:
+  a later page can report less than an earlier one. On `cursor_stale`, restart from the first
+  page; differing counts restart the walk once from the first page. On omission retry the same request with smaller `limit`,
+  never its cursor. Claim complete/no uses ONLY after a finished walk with identical counts,
+  no omissions and `coverage.complete:true` on EVERY page; else NOT complete
+  (inspect `coverage.unavailableOwners`).
 - **FAT/SAT I/O list** (`tia-verify` step 6): `tia_io_map`; recipe: `tia_guide {"topic":"recipes"}`, 'Recipe — generate the FAT/SAT I/O list'.
 - **Prove the project matches what's versioned** (a raw hash is NOT proof): `tia_guide {"topic":"recipes"}`, 'Recipe — prove the project matches the versioned XML'.
 
@@ -275,6 +296,7 @@ path ON THE SERVE HOST.
   tag table, non-empty group, singleton OB).
 - **Project library:** `tia_library_mastercopies` / `tia_library_types` read it;
   `tia_library_mastercopy_create` turns a DEVICE into a master copy (a block cannot be a source);
+  `tia_device_from_mastercopy` inherits PUT/GET, OPC UA license selection and HR mappings into a NEW station; regenerate its certificate;
   `tia_block_from_mastercopy` needs one that holds PLC blocks.
 - **Global libraries** (in the TIA Portal session, not the project): `tia_global_libraries`,
   `tia_global_library_create` / `_open` / `_save` / `_close`; save/close take the name from
@@ -299,7 +321,32 @@ path ON THE SERVE HOST.
 
 ---
 
-# Recipes (runtime-verified) & scaffold order
+# TIA version evidence, verified recipes & scaffold order
+
+## TIA version evidence and SimaticML
+
+**Delivery boundary:** App 1.8.0 retains the V21 baseline and ships no legacy layers. The following `minVersion` notes are the lowest **API major observed in the inspected V17–V21 references**, not a legacy runtime-support promise or a universal introduction release. V16 has no measured gap matrix. Host version, PublicAPI version and CPU firmware are different values.
+
+Before authoring, read selected host/API diagnostics when available. An installed compatibility DLL is not another installed host; if the target is unknown, ask rather than assume V21. Detection is not compatibility. Never bypass a version refusal through generic object calls, substitute delete/recreate or silently upgrade/downgrade.
+
+| Operation or field | Observed API `minVersion` | Evidence limit |
+|---|---|---|
+| Free-text `tia_catalog`, `tia_crossrefs`, `tia_device_change_version`, password-policy services; `tia_library_types`' `LibraryType.Namespace` field | 18 | V17 gap; V18–V20 uses bind. CPU/project service availability and legacy runtime behavior unverified. The library minimum is field-level, not a minimum for every library read. |
+| Unified tags/alarms/screens/connections/validation | 18 | V17 gap; V18 lacks alarm `TriggerBitAddress` and `TriggerAddress`; those fields bind from V19. This is not a reason to reject all V18 Unified reads. |
+| `tia_accessible_devices`, current certificate-export overload and CAx structured-result API | 19 | V17/V18 gap or signature adaptation; legacy execution unverified. Scan still requires human G7. |
+| Current VCI mapped-object/status/export model; multiuser groups and marking mutations | 20 | V17–V19 gaps; two-argument VCI workspace creation already binds from V18. Older read surfaces are not equivalent to current mutations. |
+| S7 connection authoring; generic self-description type/support fields | 21 | Gaps across inspected V17–V20; V21 is the reference baseline. |
+| Other tools and SimaticML import compatibility | null | No cross-version minimum/import matrix established; a V21 recipe does not establish legacy support. |
+
+These notes derive from the V17 and V18–V20 spikes (ADR 0041), which did **not** test cross-version LAD/FBD/SCL/UDT imports. An API that binds can still refuse a CPU/project; no silent fallback or invented data.
+
+**LAD/FBD/GRAPH authoring:** start from a real export made for the selected target Portal/API and preserve its `<Engineering version="...">`, interface, instruction and FlgNet/StructuredText namespaces. Do not copy a V21 template to a legacy target by changing version strings or namespaces. Import UDTs before dependent blocks; compile, export and compare on that same target. A matching marker is not proof of import compatibility. `tia_block_render` is review-only, never a version converter.
+
+**Import diagnostics:** V21 keeps its current import behavior, including Openness diagnostics; no new V21 version rejection. Legacy-only unsupported-version refusals must come from the authoritative target boundary before importing, for both inline XML and server-local `path`. Relay `409 feature_unsupported_in_version` and its operation/host/API/minimum/reason details when returned; do not infer a compatibility matrix from a namespace or claim all older XML is importable.
+
+**Hashes:** keep `sha256`, `normalizedSha256` and `contentHash` distinct. Normalization does not erase Engineering versions or schema namespaces and is not down-conversion. Keep a fresh `contentHash` from the same target/object for guarded writes; never reuse a V21 hash as a legacy baseline.
+
+**Live check (#213):** collect real V17 and V20 LAD/FBD/SCL/UDT exports at version acceptance, recording the host, loaded API, installed update and export options, then retain them as fixtures beside the V21 originals. Exercise import, compile, re-export and normalized comparison on each accepted target; record refusals and unknown combinations explicitly. V16 and V18/V19 also need their accepted evidence; V18/V19 acceptance is scoped to their APIs on the V20 host. Current fixtures prove V21 behavior only; synthetic marker edits are not real legacy exports.
 
 ## Pipeline order (dependency-correct)
 
@@ -462,41 +509,43 @@ Lets an external client (e.g. a Node backend) read/write the CPU over **Modbus T
 
 Lets an external S7 client (e.g. `nodes7`) read/write the CPU over **S7comm, port 102**.
 
-1. **GATE (human, GUI only):** enable PUT/GET — *Properties → Protection & Security →
-   Connection mechanisms → "Permit access with PUT/GET communication"*. **Not exposed by
-   Openness** on this CPU/FW (we tried `PlcAccessLevelProvider` — no toggle). Mark it as a
-   **human gate** and surface it in `tia-handoff`; do **not** attempt to script it.
+1. For a fresh CPU, ask the human to enable PUT/GET: *Properties → Protection & Security →
+   Connection mechanisms → "Permit access with PUT/GET communication"*. No direct setter was
+   verified on the 1214C V4.4. Alternatively, `tia_device_from_mastercopy` inherits this
+   permission from an owner-prepared station; do not script the GUI.
 2. **Non-optimized DB** for the data the client touches (PUT/GET addresses absolute offsets, so
    the DB must be byte-addressable / non-optimized).
 3. Compile + download as usual; the client then reads/writes the DB by area+offset.
 
 ## Recipe — enable **OPC UA** on the S7-1200 (port 4840)
 
-Lets an external OPC UA client read/write the CPU over **OPC UA, port 4840**. This path is the
-most gated — most of it is **human GUI steps**, not Openness.
+Lets an external OPC UA client read/write the CPU over **OPC UA, port 4840**.
+Use the manual sequence for a fresh CPU, or clone an owner-prepared station as described below.
 
 **Prerequisite — firmware ≥ V4.4.** OPC UA server isn't available on V4.0. If the project is on
 an older FW, bump it in-place first (see *bump the project firmware in-place* above —
 `ChangeType` to `.../V4.4`).
 
-Then the setup sequence. **Step 1 is scriptable; steps 2–3 are human/GUI** on this CPU/FW (for those two
-we tried `CommunicationManagement` and `OpcUaUserManagement→404`):
+For a fresh CPU, step 1 is scriptable; steps 2–3 require human configuration:
 
 1. **Activate the OPC UA server** — *Properties → OPC UA → Server* (enable). *(This step **is**
    scriptable via Openness: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}` on the "OPC UA"
-   device-item — it auto-generates the server certificate. Steps 2–3 stay GUI-only.)*
+   device-item — it auto-generates the server certificate.)*
 2. **Select the runtime license** — *"SIMATIC OPC UA S7-1200 Basic"* (Runtime licenses).
-3. **Create a server interface** that **exposes the DB** — the **S7-1200 does NOT auto-expose**
-   tags/DBs to OPC UA (unlike the S7-1500), so you must add a server interface and place the DB
-   nodes in it manually.
+3. **Create a server interface** (type **Interface**) and drop the **`ModbusData.HR` array**, not the
+   DB or separate elements. The S7-1200 does not auto-expose DBs. Browse the resulting node IDs.
 
 **Finding the node IDs (client side):** browse `ns=3;s=ServerInterfaces` with any OPC UA client;
 the actual data nodes show up under **`ns=4`**. Use those node IDs from the backend.
 
-> What Openness *can* still do here: create the DB/blocks, compile, download — **and activate the OPC UA
-> server** (step 1: `tia_obj_set_attributes {handle, attributes:{OpcUaServer:true}}`; do NOT gate it on a human). Only **three**
-> items are truly human/GUI: the **runtime license**, the **server interface** — and **PUT/GET** in the S7
-> recipe. See `docs/TIA-Openness-Casos-de-Uso.md` §8c for the full "GUI-only gates" table.
+**Prepared-station path (V21 / 1214C V4.4):** capture the configured source with
+`tia_library_mastercopy_create`, then `tia_device_from_mastercopy {masterCopy}`. This creates a new
+station, preserving PUT/GET, selected runtime license and the HR interface; it is not an existing-CPU
+setter or a license grant. TIA may rename the new PLC. Certificates are not copied: inspect its
+"OPC UA" item; `OpcUaServer:false` then `true` regenerated the certificate in the measured clone.
+Compile, save/reopen and check the exported HR mappings before any human-gated download.
+The GUI type **Interface** is exposed as `SimaticInterface` (Export/Delete, no Import);
+`ServerInterface.Import` did not reproduce its HR mapping. See `tia_guide {"topic":"gui-gates"}`.
 
 ## Recipe — WinCC Unified HMI: read, then guarded writes
 
@@ -630,9 +679,12 @@ Lengths: a `range`'s `start` is a byte number and its `length` is in BYTES (Open
 **The project matches what's versioned — prove it, don't assume it.** A raw hash of an
 export is NOT proof (two exports of the same block differ in `<Created>`/UIds). Use
 `tia_export_block` to pull a block inline and `tia_block_compare` to diff it against the
-committed XML (normalized — ignores formatting/BOM/`<Created>`/UIds); `verdict:"equal"` is
+committed XML (normalized — ignores formatting/BOM/`<Created>`; UIds are canonically renumbered,
+preserving wiring); `verdict:"equal"` is
 the actual round-trip proof. After `tia_compile`/`tia_source_put`, read `blockChanges` and
 export/commit any regenerated instance DBs before calling the project verified.
+Comparison hashes (`normalizedSha256`) from older MCP builds that stripped UIds may change:
+recompute stored comparison baselines.
 
 ## Reference — network, audit and CAx how-to
 

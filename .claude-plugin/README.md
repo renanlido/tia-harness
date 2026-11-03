@@ -23,7 +23,7 @@ In Claude Code:
 ```
 
 Installing **auto-registers the bundled `tia` MCP server**. Its default launch is
-`npx -y @renanlido/tia-openness-mcp`, which requires **Node 20+** on PATH and the npm package
+`npx -y @renanlido/tia-openness-mcp@<tested-version>`, using the exact coordinate in `plugin.json`, which requires **Node 20+** on PATH and the npm package
 to be **published**. When the Windows app's AI agents screen installs this plugin, it sets
 `tia_mcp_command` and `tia_mcp_arg0` to the installer's `mcp\node.exe` and
 `mcp\server\index.mjs`; that route needs no system Node.js, npm, or npm registry. Existing
@@ -150,13 +150,13 @@ via the plugin, nothing changes for that setup.
 
 `plugin.json` declares the MCP server `tia` and its `userConfig` option (the repo-root
 `.mcp.json` keeps a shell-default form for developing inside this repo; for the plugin, the
-`plugin.json` entry replaces it by name):
+`plugin.json` entry replaces it by name). `<tested-version>` below denotes the exact version carried by the released manifest:
 
 ```jsonc
 "mcpServers": {
   "tia": {
     "command": "${user_config.tia_mcp_command}",
-    "args": ["${user_config.tia_mcp_arg0}", "@renanlido/tia-openness-mcp"],
+    "args": ["${user_config.tia_mcp_arg0}", "@renanlido/tia-openness-mcp@<tested-version>"],
     "env": {
       "TIA_API_BASE": "${user_config.tia_api_base}",
       "TIA_MCP_MODE": "${user_config.tia_mcp_mode}"
@@ -183,10 +183,11 @@ via the plugin, nothing changes for that setup.
 }
 ```
 The Windows app sets `tia_mcp_command` and `tia_mcp_arg0` when it installs the plugin so the server runs from the
-embedded runtime. The second argument remains the package name for the `npx` default; the MCP entry point ignores it
+embedded runtime. The second argument remains the versioned package spec for the `npx` default; the MCP entry point ignores it
 when launched directly by Node.js.
 
-- The default `npx -y @renanlido/tia-openness-mcp` runs the published package (`mcp/`) and requires Node 20+ on PATH.
+- The default npx launcher uses the exact MCP version tested for this harness release and requires Node 20+ on PATH.
+- An older installed app can install a newer public harness with a different tested MCP pin. Immutable harness refs and app-coupled repair are tracked separately.
 - On Windows, the app supplies the embedded Node command and server entry point on a fresh plugin install. Existing
   plugin settings are not rewritten; use Disconnect, then Connect in the app for an app-managed connection.
 - `TIA_API_BASE` (filled from `userConfig`) points the MCP (a **pure HTTP client**) at the `serve` API host. The
@@ -250,7 +251,7 @@ following **explicit assumptions**, structured cleanly so they are easy to adjus
 Three end-to-end **communication scenarios** drive one **S7-1200 LED** from a web app via a
 shared DB, each over a different industrial protocol — **Modbus TCP**, **S7 PUT/GET**, and
 **OPC UA** (browser → Node backend → protocol → PLC). They exercise the harness recipes
-(non-optimized DB, in-place firmware bump, the GUI-only gates) on real hardware. See
+(non-optimized DB, in-place firmware bump and first-source human preparation) on real hardware. See
 [../docs/COMM-SCENARIOS.md](../docs/COMM-SCENARIOS.md) for the write-up and the runnable
 backends/apps under [../comm-scenarios/](../comm-scenarios/) (`modbus/`, `s7/`, `opcua/`).
 

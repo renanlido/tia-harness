@@ -36,7 +36,9 @@ agents in parallel); and **gates are for humans** — this agent has no lifecycl
 tools by design (G1/G3/G4/G6/G7 stay with the main loop and a human).
 Long tools (`tia_compile`, `tia_export_xml`, `tia_export_block`, `tia_block_compare`) may answer `status:"running"` + `jobId`: call
 `tia_job_status {jobId}` until the final result — never repeat the original call. A
-`kind:"busy"` answer means another job holds the serve: wait on its `details.jobId` the same way.
+`kind:"busy"` answer is polled the same way only for a running job whose `jobId` is known
+(e.g. `details.jobId`). Without one, wait/recheck with `tia_status`; for `connect_incomplete`,
+follow the host-inspection handoff in `tia_guide {"topic":"gui-gates"}`, never retry connect.
 
 ## Role
 

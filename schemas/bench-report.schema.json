@@ -101,14 +101,29 @@
         "gate": { "enum": ["G1", "G3", "G4", "G6", "G7", "unknown"], "description": "The product's gate. G3 download, G4 online or station upload, G1 trust dialog, G6 credentials, G7 network scan; `unknown` for a gate name this schema does not know yet." },
         "kind": { "type": "string", "description": "The product's own gate name, for example trust_dialog, download_approval, go_online, station_upload." },
         "at": { "$ref": "#/$defs/timestamp" },
-        "approvedBy": { "type": "string", "minLength": 1 },
+        "approvedBy": { "type": "string", "pattern": "^(owner|coordinator-delegation)( \\([^\\r\\n]+\\))?$", "description": "Real approving authority, optionally followed by the approval flag in parentheses. Coordinator delegation is bench-only: report validation also verifies the gate and target evidence." },
+        "waivedBy": { "type": "string", "pattern": "^(owner|coordinator-delegation)( \\([^\\r\\n]+\\))?$" },
+        "waivedAt": { "$ref": "#/$defs/timestamp" },
         "resumedAt": { "$ref": "#/$defs/timestamp" },
+        "replannedAt": { "$ref": "#/$defs/timestamp", "description": "An unapprovable G3 handoff retired for planning only. A passing report still requires a later fresh download handoff with its own human approval." },
         "planHash": { "type": ["string", "null"] },
         "fingerprint": { "type": ["string", "null"] },
         "youMustDo": { "type": ["string", "null"] },
         "nextSteps": { "type": "array", "items": { "type": "string" } },
         "plan": { "type": ["object", "null"] },
-        "target": {}
+        "target": {},
+        "approvalEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "plc", "device", "interface", "address"],
+          "properties": {
+            "source": { "const": "device_network" },
+            "plc": { "type": "string", "minLength": 1 },
+            "device": { "type": "string", "minLength": 1 },
+            "interface": { "type": "string", "minLength": 1 },
+            "address": { "const": "192.168.68.240" }
+          }
+        }
       }
     },
     "check": {
