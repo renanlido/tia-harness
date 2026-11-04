@@ -161,16 +161,16 @@ Selection/order affects IDs; probe after construction/import.
    save (`tia_project_save`) before switching projects; Openness does not say what changed.
    First download over another project's or TIA version's program: plan
    `allowUpgradeTargetDevice:true`, or a refusal may leave the CPU stopped (the plan cannot predict it).
-2. **The serve is a SINGLE serial worker** — one Openness op at a time. Do **not** fire
-   concurrent `tia_*` calls; a hung Openness op can stall the serve (may need a restart).
-3. **FB edits can invalidate instance DBs.** Run software-scope `tia_compile` first;
-   a modified DB in `blockChanges` confirms regeneration: export/commit it. If still
-   inconsistent, `tia_block_delete` + `tia_instancedb_create`, then recompile.
-   **UDT/DB owner report (2026-10-31; cause unverified, bench pending):** compiles:
-   2 warnings then 0; load-memory/retain/start loss. Save DB XML/flags.
-   Inspect `changeImpact`/`readGaps` (unknown); `trackChanges:false` opts out.
-   Restore intended `IsOnlyStoredInLoadMemory` via `tia_block_set_attribute`;
-   member values from saved XML. Inspect warnings before recompiling; verify before deploy.
+2. **One serial worker:** never concurrent `tia_*` calls; a hung operation may need a serve restart.
+3. **FB edits:** software-scope `tia_compile`; export regenerated DBs (`blockChanges`).
+   Still inconsistent: `tia_block_delete` + `tia_instancedb_create`, recompile.
+   **Global DB source put** re-creates it: `IsOnlyStoredInLoadMemory` resets
+   (no source support; pragma ignored); nested starts need `BEGIN`.
+   UDT put/`tia_types_import` did not reset DB values. Save XML/text/flags.
+   Inspect `changeImpact.dbAttributeChanges`/`readGaps` (unknown; `trackChanges:false` opts out).
+   Restore flag=true: `tia_block_set_attribute`, compile; starts: saved XML/text, not attributes.
+   **N warnings then 0:** hardware compile produced OPC UA guest/unsecured + missing
+   protection-level warnings; next skipped hardware. Check `messages[]` "Hardware configuration".
 4. **Firmware rule: project FW ≤ device FW.** Bump the project FW **in-place** with
    `tia_device_change_version` (`DeviceItem.ChangeType`), which preserves the **program** — never
    set the project higher than the physical CPU. **⚠️ It RESETS GUI-gated comm settings** (the
