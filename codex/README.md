@@ -12,6 +12,18 @@ Claude Code and Gemini guide copies, by `cd mcp && npm run sync`: edit the chapt
 and skills here are hand-written Codex-format ports of [`../agents/claude/`](../agents/claude/) (the subagent source) and the
 root [`../skills/`](../skills/): keep their technical content in step with those; only the file format and vocabulary differ.
 
+## Connect with guided setup
+
+Install PLCWare (Windows app), start its API, then run `npx plcware-setup` on the agents' computer.
+For advanced configuration, follow the manual routes below; do not install a duplicate connection.
+The bare command in a terminal offers detected agents and supported components, then API URL, full/read-only mode,
+a preview and one confirmation. Codex receives the official `renanlido/tia-harness` plugin through its native CLI,
+not loose skills or an independently maintained MCP entry. Plugin hosts receive the whole plugin even with a skill selector.
+Setup projects nondefault URL/mode only into its owned marketplace's `codex/mcp.json`, discloses it in the preview,
+and records changes for exact uninstall. An independently installed plugin stays untouched.
+
+The channel table above and manual steps below describe advanced installation, not an alternative harness.
+
 ## What's in here
 
 ```
@@ -41,33 +53,7 @@ Measured with `codex-cli 0.145.0` against an isolated `CODEX_HOME` (see [Evidenc
 | Subagents (4) | **copy** into `<codex home>\agents\` | Plugins do not carry subagents (the plugin docs do not mention them). |
 | Operating guide | **`tia-init`** per project (or the `tia_guide` tool) | Not copied globally, see [The operating guide](#the-operating-guide). |
 
-## Alternative, once published: the guided setup
-
-`npx @renanlido/plcware-setup` connects Codex, and the other agents on the machine, in one run instead of the plugin and
-the copy step below. **It is not published yet**, so that command does not work today: use the install below. For Codex it:
-
-- registers the `tia` MCP server in a managed `[mcp_servers.tia]` section of `config.toml`, between `# tia-harness`
-  markers, with or without the `codex` command (`startup_timeout_sec = 90`, `tool_timeout_sec = 150`); a connection it made earlier with
-  `codex mcp add tia` stays on that route;
-- copies the 9 skills (these Codex-wording files) to `~/.agents/skills` and the 4 subagents to `<codex home>/agents`
-  itself, **without the plugin**, so the skills are not listed as `tia-harness:<skill>`;
-- pre-approves the 62 read-only (class R) tools in that same section (`default_tools_approval_mode = "prompt"` plus
-  `approval_mode = "approve"` per read-only tool); every tool that changes the project or touches the PLC still asks;
-- records everything, so its `uninstall` removes only what it added. Hand-made skill folders that are exactly a version the
-  public repository released are moved aside; a hand-made subagent file of a released version is replaced by the new one
-  (the old bytes are kept and `uninstall` puts them back), and an edited subagent file stops Codex's plan. A copy of the
-  guide in `~/.codex/AGENTS.md` is left in place, with a note; it writes no guide of its own (the server's operating brief
-  and `tia_guide` replace it).
-
-Use one route: it stops for Codex while the plugin is installed (remove it with the Uninstall commands below), and a
-`codex mcp add tia` run by hand after it wrote the section makes Codex rewrite that section and drop the pre-approvals.
-It was tested only against the real `codex-cli` 0.145.0 in throw-away homes (Codex reads the section as the `tia` server
-with the 62 pre-approvals, and uninstall restores `config.toml` byte for byte) and never in a model session, so a read-only
-tool was not seen running without a prompt. That Codex validates `approval_mode` (an unknown value makes it refuse the whole
-configuration, so `codex mcp get` exiting 0 shows the section was parsed) was seen in a separate spike, recorded in
-[the research](../docs/research/2026-10-16-class-r-preapproval.md).
-
-## Install (Windows, PowerShell)
+## Advanced: manual install (Windows, PowerShell)
 
 Needs Codex with the `codex plugin` command (0.145.0 tested) and Node.js (the MCP runs through `npx`).
 

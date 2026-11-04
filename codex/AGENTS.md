@@ -12,8 +12,9 @@ The harness pieces arrive through the `tia-harness` Codex plugin and one copy st
   verifier, safety-reviewer).
 - **The `tia` MCP** is registered by the plugin. See [../docs/INSTALL.md](../docs/INSTALL.md) for the
   exact install/uninstall steps and the remote-`serve` override.
-- The guided setup `@renanlido/plcware-setup` (not published yet) is the other route: it adds the MCP, the skills and
-  the subagents without the plugin and pre-approves the read-only tools. Use one route per agent.
+- Connect through PLCWare (Windows app) plus `npx plcware-setup`.
+  Setup installs this official Codex plugin through its native CLI and records its changes for exact uninstall;
+  it does not copy an independent MCP/skills harness. See [README.md](README.md) for advanced manual installation.
 
 <!-- tia-harness:start -->
 

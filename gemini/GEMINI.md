@@ -1,10 +1,9 @@
 > **Sync note:** The block between the `tia-harness` markers below is GENERATED from
 > `mcp/content/` (run `cd mcp && npm run sync`) — do not hand-edit inside it. This head
-> (outside the markers) is Gemini-specific. Installed as the `tia-harness` Gemini CLI extension
-> (`gemini extensions install https://github.com/renanlido/tia-harness`), this file is the extension's
-> context file and the `tia` MCP server and the skills come with it. The guided setup `@renanlido/plcware-setup` (not
-> published yet) is the other route and writes no context file; use one route. For a manual install, see
-> [`gemini/README.md`](README.md) and [`docs/INSTALL.md`](../docs/INSTALL.md).
+> (outside the markers) is Gemini-specific. Connect through PLCWare (Windows app) plus `npx plcware-setup`.
+> Setup installs the official `renanlido/tia-harness` Gemini extension; this file is
+> its context file, and its MCP server and skills come with it. Setup does not install a second loose harness.
+> For advanced manual installation, see [README.md](README.md) and [INSTALL.md](../docs/INSTALL.md).
 
 # Working with the TIA Portal Automation Harness (Gemini CLI)
 

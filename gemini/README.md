@@ -12,7 +12,14 @@ Claude Code and Codex guide copies, by `cd mcp && npm run sync`: edit the chapte
 source is [`../agents/claude/`](../agents/claude/); the same command generates the Gemini files in the root `agents/` from
 it. The skills are the root [`../skills/`](../skills/), shared with Claude Code; only the file format and vocabulary differ.
 
-## Install as a Gemini CLI extension (recommended until the guided setup is published)
+## Connect with guided setup
+
+Install PLCWare (Windows app), start its API, then run `npx plcware-setup` on the agents' computer.
+For advanced configuration, follow the manual routes below; do not install a duplicate connection.
+With no arguments in a terminal it offers detected agents, supported components and skills, API URL and mode,
+then a preview and one confirmation. Gemini receives the official `renanlido/tia-harness` extension.
+
+## Advanced: manual Gemini CLI extension install
 
 One command installs the `tia` MCP server, the skills and the operating guide, and Gemini itself
 handles updates:
@@ -42,29 +49,14 @@ The public extension carries the MCP pin tested for its own release, not necessa
 app. Manual npx commands without a version follow npm latest; copy the exact package argument from the released manifest to
 match its tested pair.
 
-### Alternative, once published: the guided setup
+### Setup ownership and trust
 
-`npx @renanlido/plcware-setup` connects Gemini CLI, and the other agents on the machine, in one run, **without the
-extension**. It is **not published yet**, so that command does not work today: use the extension above. For Gemini CLI it:
+The guided setup installs the official extension through Gemini's native CLI, not a second set of loose files.
+It configures API URL and mode through extension settings and records what it owns for exact uninstall.
+An independently installed extension is left alone. Native source trust and workspace trust remain human decisions;
+setup never accepts those prompts for you. See [setup/README.md](../setup/README.md#gemini-source-trust).
 
-- edits the one `mcpServers.tia` key of `~/.gemini/settings.json` (comments and other settings stay);
-- copies the 9 skills to the shared `~/.agents/skills` and the 4 subagents (the root `agents/*.md`, Gemini format) to
-  `~/.gemini/agents`;
-- adds pre-approval allowances for the 62 read-only (class R) tools with a policy file of its own, `~/.gemini/policies/plcware-tia.toml` (one
-  `allow` rule per tool, never `trust: true`, which would allow every tool); it adds none for a tool that changes the
-  project or touches the PLC;
-- records everything, so `uninstall` removes only what it added. Hand-made commands and skill folders that are exactly a
-  version the public repository released are moved aside; a hand-made subagent file of a released version is replaced by the
-  new one (the old bytes are kept and `uninstall` puts them back), and an edited subagent file stops Gemini's plan. A
-  hand-copied `~/.gemini/GEMINI.md` is left in place, with a note. It writes no context file of its own: the server's
-  operating brief and `tia_guide` replace it.
-
-It stops for Gemini CLI while the `tia-harness` extension is installed (a second copy would run two servers against one
-PLCWare), so pick one. Gemini keeps every MCP server disabled, user-level ones included, in a folder you have not trusted
-(observed with 0.64.0): choose "Trust folder" when it asks, or run `/permissions trust`; the setup never trusts a folder
-for you. It was tested only against the real `@google/gemini-cli` 0.64.0 in throw-away homes (`gemini skills list` finds
-the 9 skills; `gemini mcp list` shows `Disconnected` within its 5 s window, as with the extension) and never in a logged-in
-session.
+The advanced instructions here describe the same official `renanlido/tia-harness` extension.
 
 ### Subagents: one directory, two formats
 

@@ -11,7 +11,16 @@ program architecture, hardware/network rules, the verification ladder, and the
 gates/guards model — is bundled next to each skill (`BASELINE.md`, `RULES.md`,
 `RECIPES.md`, `CPU-TABLE.md`).
 
-## Install (Claude Code marketplace)
+## Connect with guided setup
+
+Install PLCWare (Windows app), start its API, then run `npx plcware-setup` on the agents' computer.
+For advanced configuration, follow the manual routes below; do not install a duplicate connection.
+With no arguments in a terminal it offers detected agents, supported components and skills, API URL and mode,
+then previews changes and asks for one confirmation. Claude Code receives the official `renanlido/tia-harness` plugin,
+not loose copies of its MCP, skills or subagents. Setup records its changes for exact uninstall; existing independent
+plugin installations are left alone. Native source trust remains a human decision.
+
+## Advanced: manual install (Claude Code marketplace)
 
 This repo is **both the plugin and its own marketplace** (`.claude-plugin/marketplace.json`).
 In Claude Code:
@@ -34,14 +43,8 @@ macOS/Linux/remote hosts keep the `npx` defaults. Installing asks for the **PLCW
 runs elsewhere) — see [Setting the serve URL](#setting-the-serve-url). The two pure R skills
 (`spec-validate`, `cpu-select`) work even before the MCP / `serve` are up.
 
-**Alternative, once published: the guided setup.** `npx @renanlido/plcware-setup` connects Claude Code, and also Claude
-Desktop, Codex, Gemini CLI, Cursor and VS Code, in one run and **without the plugin**: for Claude Code it adds the `tia`
-MCP server at user scope, copies the 9 skills to `~/.claude/skills` and the 4 subagents to `~/.claude/agents` (their tool
-names rewritten to `mcp__tia__*`, the standalone form), and adds pre-approval allowances for the 62 read-only (class R)
-tools (none for a tool that changes the project or touches the PLC; the permissions you already have stay authoritative).
-It records what it adds, so its `uninstall` removes only
-that. It is **not published yet**, so the command does not work today: install the plugin as above. Use one route per
-agent: the guided setup stops for Claude Code while `tia-harness@tia-openness` is installed.
+Use one installation owner per agent. Setup and the manual channel install the same official harness; neither is a
+second harness. A plugin already installed independently is not adopted or removed by setup.
 
 > `source` is `"./"` (the repo root IS the plugin; `.claude-plugin/` only holds its manifests), per the official
 > marketplace convention (source = the directory that *contains* `.claude-plugin/`). If a future
@@ -62,7 +65,7 @@ What to do: update or reinstall the plugin (`/plugin marketplace update tia-open
 `/plugin install tia-harness@tia-openness` and `/reload-plugins`); in each downstream project run `tia-init` again to
 refresh the guide block between the `tia-harness:start/end` markers (it still mentions the old names until you do). The
 Codex and Gemini ports follow the same rename (`/spec-validate`, `/tia-review`, ... for Gemini commands): copy the new
-files over the old folders and delete the dotted ones. The guided setup (once published) does that cleanup for you: it
+files over the old folders and delete the dotted ones. The guided setup does that cleanup for you: it
 moves aside the hand-made copies that are exactly a version the public repository released, and puts them back on
 `uninstall`; anything you edited is left alone and named.
 
