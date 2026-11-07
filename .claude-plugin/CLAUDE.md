@@ -694,6 +694,22 @@ export/commit any regenerated instance DBs before calling the project verified.
 Comparison hashes (`normalizedSha256`) from older MCP builds that stripped UIds may change:
 recompute stored comparison baselines.
 
+## Recipe — SIMATIC SD text: read, edit, create (tia_export_sd, tia_import_sd)
+
+`tia_export_sd` returns one block or type as `.s7dcl` code text and `.s7res` texts, with the same `contentHash`
+as `tia_export_block`/`tia_export_type`; `tia_import_sd` creates or replaces ONE object from them (the only SD route
+for an object that does not exist yet; VCI updates mapped objects only). Run `dryRun:true` first and pass the fresh
+`contentHash` as `expectedContentHash`. Rules: an existing OB of any event class is refused (`sd_existing_ob_unsupported`: TIA
+gives every OB imported from SD a new number, a ProgramCycle OB 123 came back as OB 1): change it with `tia_export_block` +
+`tia_import_xml`, which keep its number and event class (a NEW OB can be created from SD); a global DB loses `IsOnlyStoredInLoadMemory`,
+`IsWriteProtectedInAS` and `DBAccessibleFromOPCUA`: read `changeImpact.dbAttributeChanges`, nothing is restored for
+you (`IsOnlyStoredInLoadMemory` and `IsWriteProtectedInAS` can be restored with `tia_block_set_attribute`; a person sets
+`DBAccessibleFromOPCUA` again in TIA Portal, the block's properties, when that route refuses it: on V21 2100.0.121.1 its
+`400` `details.writable` omits it on an optimized global DB; then compile); comments only through `.s7res` (`//` inside a
+LAD/FBD network is refused; quote YAML values with `:` or `#`);
+FBD: a `wire#` consumer rung before its producer, every box output pin listed (an empty `et =>` is fine); TIA
+re-quotes some identifiers on export, so compare ignoring quotes. The object comes back inconsistent: compile it.
+
 ## Reference — network, audit and CAx how-to
 
 **Network lifecycle.** `tia_subnet_delete` on a non-empty subnet is refused (`409 subnet_not_empty`); `disconnectNodes:true` disconnects its nodes and removes its IO systems. A subnet rename (`tia_subnet_update` `name`) takes at most 24 characters: a longer name is `400 invalid_subnet_name` (a `dryRun` too, nothing changed) although `tia_subnet_create` accepts longer names; a name equal to the current one is not a rename, and the serve counts UTF-16 code units, spaces included. PROFINET name (`tia_pn_name_set`): lower-case DNS labels (`a-z0-9-`) split by `.`, not an IP look-alike. A node in its default state (automatic name generation on, `PnDeviceName` read-only) takes a `name`: the serve switches auto-generation off first and writes the name second, and its `dryRun` cannot prove that the name becomes writable, so a `plan_ok` can still be followed by `409 pn_name_unsupported` from the real call; the serve then writes the previous auto-generation back and verifies it, the error ends with "Nothing was changed." only when that read-back confirmed it, and otherwise `409 conflict` names `autoGeneration` as NOT restored: re-read with `tia_device_network`. IO system first: `tia_io_system_create` on the controller, then `tia_io_system_connect` per device; `409 cross_subnet_assignment`: connect the device to that subnet (`tia_network_connect`) first.
