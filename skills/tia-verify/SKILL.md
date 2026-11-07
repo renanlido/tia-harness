@@ -123,7 +123,7 @@ read independent of the compile; the human signs the FAT/SAT record, the skill n
    {plc, type}`, and for a tag table none (no hash exists for it and the serve refuses one), so rely on
    the dry run and the postcheck. Call an import verified only when every imported object has
    `postcheck.verified:true`. `409` `import_unverified` means the project object WAS already written and
-   `409` `vci_batch_incomplete` means the objects in `done` WERE written: report what was written, never
+   `409` `vci_batch_incomplete` means `done` lists written and skipped objects: report what was written, never
    "nothing changed". A `504` `worker_restarted`, a `timeout` or a lost session during a VCI write leaves
    the outcome UNKNOWN or partial: read `tia_vci_status` before repeating anything.
 

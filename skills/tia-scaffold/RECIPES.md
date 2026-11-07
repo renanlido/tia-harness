@@ -293,6 +293,9 @@ replaces.
   mapped and its file would be REPLACED: stop and go back to (1). `format` chooses the file format of an UNMAPPED object
   only (leave it out unless the serve answers `400 bad_request` with `details.supportedFormats`); a mapped object keeps its
   mapping's format and the selector is neither applied nor validated for it.
+- **(b) A `skip` is not a write.** An object the plan lists as `skip` (`reason:"already_equal"`) is already mapped and its
+  status is `equal`: TIA refuses to synchronize an equal mapping, so the serve writes nothing for it and the answer lists it
+  as `skip`.
 - **(c) Verify an export.** Every row of every page must be `equal`. Read `coverage` on EVERY page: `summary` and
   `coverage` describe only the rows of that response (the serve compares only the rows of the page), so fold them over all
   pages before saying the workspace is in sync. `409 cursor_stale` (a mapping appeared or went) restarts the walk once.
@@ -306,10 +309,15 @@ replaces.
   on the kind: a block uses `tia_export_block`, a type uses `tia_export_type { plc:"PLC_1", type:"UDT_Motor" }`, and a tag
   table has NO hash (the serve and the MCP refuse `expectedContentHash` for it), so rely on the dry run and the postcheck.
   A wrong `expectedContentHash` is `409 state_changed` and nothing was written.
+- **(e) A refused file, a changed attribute.** A workspace file that TIA refuses (an SD parser error, a corrupted resource
+  file) is `400 bad_request` with TIA's text and nothing changed: fix the file, never retry it unchanged. A postcheck whose
+  `attributeChanges` lists the `SecondaryType` or `Number` of an OB, or `IsOnlyStoredInLoadMemory`, `IsWriteProtectedInAS`
+  or `DBAccessibleFromOPCUA` of a data block, means TIA changed the object while importing it (a SIMATIC SD import does):
+  the object WAS written, so report the before and after and do not call the import done.
 - **An import REPLACES the project object.** After a real import the old object is disposed: a handle of it (`tia_obj_*`) and every value read before are stale, so re-read the block by name (`tia_export_block`, `tia_plc_blocks`) and then `tia_vci_status`. The serve does the same for its postcheck: an object it cannot find again by name, or whose mapping the replacement dropped, is `409 import_unverified` (the object WAS written). In a batch, an object that can no longer be found or mapped when its turn comes stops the batch there: `409 vci_batch_incomplete` naming it, or `409 conflict` when nothing was imported yet; nothing more is written.
 - **Verified only with a postcheck.** An import is done only when every imported object has `postcheck.verified:true`. Every
   other answer means it is NOT verified: `409 import_unverified` (the object WAS written, review it with `tia_export_block`
-  or `tia_export_type`), `409 vci_batch_incomplete` (the objects in `done` WERE written), a status row `unsupported`,
+  or `tia_export_type`), `409 vci_batch_incomplete` (`done` lists the objects written and the skipped ones, `action: skip`, nothing written for them), a status row `unsupported`,
   `statusFailed` or `unknown`, `coverage.complete:false`, an omission marker that survives smaller `limit` retries, or a
   page walk that did not finish.
 - **Unknown outcomes.** `504 worker_restarted`, a `timeout` or a lost session during an export or an import leaves the
